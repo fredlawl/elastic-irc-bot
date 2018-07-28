@@ -1,0 +1,3 @@
+[submodule "lib/sts-queue"]
+	path = lib/sts-queue
+	url = git@github.com:petercrona/StsQueue.git
