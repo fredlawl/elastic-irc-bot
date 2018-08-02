@@ -17,13 +17,12 @@
 #include "irc_message_parser.h"
 #include "irc_message.h"
 #include "message_bus.h"
+#include "elastic_search.h"
 
-#define IRC_BUF_LENGTH 512
 #define SERVER_IP "38.229.70.22"
 #define SERVER_PORT 6667
 
 static int socket_descriptor;
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static volatile bool irc_read_thread_stopped = false;
 
 void test(void *test) {
@@ -45,6 +44,10 @@ int main() {
   StsHeader *queue;
   struct irc_read_buffer_args thread_args;
   struct irc_message_parser *parser;
+
+  if (curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
+    return EXIT_FAILURE;
+  }
 
   char *cmds[] = {
       "PASS secretpass\r\n",
@@ -101,6 +104,11 @@ int main() {
   }
 
   parser = allocate_irc_message_parser(lexer);
+  struct elastic_search *search = allocate_elastic_search();
+  struct elastic_search_connection *el_con = elastic_search_connect(search, "http://localhost:9200");
+
+  elastic_search_create_index_if_not_exists(el_con, "test", "docnametest");
+  elastic_search_disconnect(el_con);
 
   while (true) {
     struct irc_message *msg = irc_message_parser_parse(parser);
@@ -115,10 +123,14 @@ int main() {
     }
   }
 
+  deallocate_elastic_search(search);
+
   if (pthread_join(pthread_irc_read_buffer, NULL)) {
     fprintf(stderr, "Error joining thread\n");
     return EXIT_FAILURE;
   }
+
+  curl_global_cleanup();
 
   deallocate_irc_message_parser(parser);
   shutdown(socket_descriptor, SHUT_RDWR);

@@ -8,7 +8,6 @@ set(LIBRARIES "")
 
 project(${BINARY_NAME} C)
 
-# erratum: Incorrect if-branch, incorrect library include, incorrect include dir
 find_path(PTHREADS_INCLUDE_DIR NAMES threads pthread pthreads)
 find_library(PTHREADS_LIBRARY NAMES threads pthread pthreads REQUIRED)
 if (PTHREADS_LIBRARY)
@@ -19,7 +18,6 @@ else(PTHREADS_LIBRARY)
 endif(PTHREADS_LIBRARY)
 
 
-# erratum: Incorrect if-branch, incorrect library include, incorrect include dir
 find_path(CURL_INCLUDE_DIR NAMES libcurl curl)
 find_library(CURL_LIBRARY NAMES libcurl curl REQUIRED)
 if (CURL_LIBRARY)
