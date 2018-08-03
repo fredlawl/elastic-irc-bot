@@ -40,6 +40,7 @@ int main() {
   size_t cmds_array_len;
   struct sockaddr_in socket_address;
   pthread_t pthread_irc_read_buffer;
+  // todo: create another thread to send information to elastic search
   struct irc_lexer *lexer;
   StsHeader *queue;
   struct irc_read_buffer_args thread_args;
@@ -104,11 +105,7 @@ int main() {
   }
 
   parser = allocate_irc_message_parser(lexer);
-  struct elastic_search *search = allocate_elastic_search();
-  struct elastic_search_connection *el_con = elastic_search_connect(search, "http://localhost:9200");
 
-  elastic_search_create_index_if_not_exists(el_con, "test", "docnametest");
-  elastic_search_disconnect(el_con);
 
   while (true) {
     struct irc_message *msg = irc_message_parser_parse(parser);
@@ -123,7 +120,7 @@ int main() {
     }
   }
 
-  deallocate_elastic_search(search);
+  send(socket_descriptor, "QUIT\r\n", 7, 0);
 
   if (pthread_join(pthread_irc_read_buffer, NULL)) {
     fprintf(stderr, "Error joining thread\n");

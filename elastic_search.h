@@ -17,8 +17,6 @@ bool elastic_search_disconnect(struct elastic_search_connection *connection);
 
 bool elastic_search_create_index_if_not_exists(struct elastic_search_connection *connection, char *index_name, char *document_name);
 
-// ... something about a type ...
-
 bool elastic_search_insert(struct elastic_search_connection *connection, char *index_name, char *document_name);
 
 #endif
