@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "irc_token.h"
 #include "irc_lexer.h"
@@ -7,11 +8,37 @@
 #include "irc_spec.h"
 #include "irc_message.h"
 
+enum irc_parser_state {
+  IRC_PARSER_STATE_PREFIX = 0,
+  IRC_PARSER_STATE_COMMAND,
+  IRC_PARSER_STATE_PARAM,
+  IRC_PARSER_STATE_DONE
+};
+
+
 struct irc_message_parser {
   size_t prefix_handler_count;
   size_t command_handler_count;
   struct irc_lexer *lexer;
   struct irc_token *current_token;
+  enum irc_parser_state state;
+};
+
+typedef void (*handle_parser_state_t)(struct irc_message_parser *parser, struct irc_message *message);
+
+//static struct irc_prefix *__parse_prefix(struct irc_message_parser *parser);
+//static struct irc_command_parameter *__parse_command_parameter(struct irc_message_parser *parser);
+static inline struct irc_message *__allocate_irc_message();
+static void __eat_token(struct irc_message_parser *parser, enum irc_token_type expected_token_type);
+
+static void __handle_prefix(struct irc_message_parser *parser, struct irc_message *message);
+static void __handle_command(struct irc_message_parser *parser, struct irc_message *message);
+static void __handle_parameter(struct irc_message_parser *parser, struct irc_message *message);
+
+static handle_parser_state_t parser_handlers[] = {
+    &__handle_prefix,
+    &__handle_command,
+    &__handle_parameter
 };
 
 struct irc_message_parser *allocate_irc_message_parser(struct irc_lexer *lexer) {
@@ -27,11 +54,13 @@ struct irc_message_parser *allocate_irc_message_parser(struct irc_lexer *lexer) 
   parser->current_token = allocate_irc_token(IRC_TOKEN_EOF, token_value);
   parser->prefix_handler_count = 0;
   parser->command_handler_count = 0;
+  parser->state = IRC_PARSER_STATE_PREFIX;
 
   return parser;
 }
 
 void deallocate_irc_message_parser(struct irc_message_parser *parser) {
+  deallocate_irc_token(parser->current_token);
   deallocate_irc_lexer(parser->lexer);
   free(parser);
 }
@@ -41,25 +70,131 @@ bool irc_message_parser_can_parse(struct irc_message_parser *parser) {
 }
 
 struct irc_message *irc_message_parser_parse(struct irc_message_parser *parser) {
-  struct irc_token *token;
+  struct irc_message *msg = __allocate_irc_message();
+
+  if (msg == NULL)
+    return NULL;
 
   deallocate_irc_token(parser->current_token);
-  token = irc_lexer_get_next_token(parser->lexer);
-  parser->current_token = token;
+  parser->current_token = irc_lexer_get_next_token(parser->lexer);
 
-  if (irc_token_is_token_type(token, IRC_TOKEN_EOF)) {
+  if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_EOF))
     return NULL;
+
+  parser->state = IRC_PARSER_STATE_PREFIX;
+
+  while (parser->state != IRC_PARSER_STATE_DONE) {
+    parser_handlers[parser->state](parser, msg);
   }
 
-  if (irc_token_is_token_type(token, IRC_TOKEN_EOL)) {
+  if (msg->prefix != NULL) {
+    printf("%s -- ", msg->prefix->value);
     printf("\n");
   }
 
-  if (irc_token_is_token_type(token, IRC_TOKEN_NOSPCRLFCL) ||
-      irc_token_is_token_type(token, IRC_TOKEN_LETTER)) {
-    printf("%c", irc_token_get_token_value(token).character);
+  if (msg->command != NULL) {
+    if (msg->command->command_type == IRC_CMD_CODE) {
+      printf("%i", msg->command->command.code);
+    } else {
+      printf("%s", msg->command->command.name.value);
+    }
   }
 
-  return NULL;
+  return msg;
 }
 
+void deallocate_irc_message(struct irc_message *message) {
+  size_t i;
+
+  free(message->prefix->value);
+
+  if (message->command->command_type == IRC_CMD_NAME) {
+    free(message->command->command.name.value);
+  }
+
+  for (i = 0; i < message->command->parameter_count; i++) {
+    free(message->command->parameters[i]->value);
+    free(message->command->parameters[i]);
+  }
+
+  free(message->prefix);
+  free(message->command);
+  free(message);
+}
+
+static inline struct irc_message *__allocate_irc_message() {
+  struct irc_message *msg;
+  if ( (msg = (struct irc_message *) malloc(sizeof(struct irc_message))) == NULL) {
+    return NULL;
+  }
+
+  msg->prefix = NULL;
+  msg->command = NULL;
+
+  return msg;
+}
+
+static void __eat_token(struct irc_message_parser *parser, enum irc_token_type expected_token_type) {
+  enum irc_token_type current_token_type;
+
+  current_token_type = irc_token_get_token_type(parser->current_token);
+
+  if (irc_token_is_token_type(parser->current_token, expected_token_type)) {
+    parser->current_token = irc_lexer_get_next_token(parser->lexer);
+    return;
+  }
+
+  fprintf(stderr, "[FATAL PARSE ERROR] There was an error parsing input. ");
+  fprintf(stderr, "Expecting token %i but got %i instead.", expected_token_type, current_token_type);
+
+  exit(EXIT_FAILURE);
+}
+
+static void __handle_prefix(struct irc_message_parser *parser, struct irc_message *message) {
+  struct irc_token *tok;
+  char buff[255];
+  size_t prefix_len;
+  struct irc_prefix *prefix;
+
+  memset(buff, '\0', 255);
+  // todo: check for issues later incase that token doesn't get returned but something aweful does
+
+  tok = irc_lexer_get_next_token(parser->lexer);
+  if (irc_token_is_token_type(tok, IRC_TOKEN_NONE))
+    return;
+
+  if (!irc_token_is_token_type(tok, IRC_TOKEN_COLON)) {
+    parser->state = IRC_PARSER_STATE_COMMAND;
+    return;
+  }
+
+  prefix_len = 0;
+  while ( (tok = irc_lexer_get_next_token(parser->lexer)) && !irc_token_is_token_type(tok, IRC_TOKEN_SPACE) ) {
+    buff[prefix_len] = irc_token_get_token_value(tok).character;
+    __eat_token(parser, IRC_TOKEN_NOSPCRLFCL);
+    prefix_len++;
+  }
+
+  prefix = (struct irc_prefix *) malloc(sizeof(struct irc_prefix));
+  if (!prefix) {
+    fprintf(stderr, "Unable to allocate prefix.\n");
+    exit(EXIT_FAILURE);
+  }
+
+  prefix->length = prefix_len + 1;
+  prefix->value = (char *) malloc(sizeof(char) * prefix->length);
+  strcpy(prefix->value, buff);
+
+  message->prefix = prefix;
+
+  __eat_token(parser, IRC_TOKEN_SPACE);
+  parser->state = IRC_PARSER_STATE_COMMAND;
+}
+
+static void __handle_command(struct irc_message_parser *parser, struct irc_message *message) {
+  parser->state = IRC_PARSER_STATE_PARAM;
+}
+
+static void __handle_parameter(struct irc_message_parser *parser, struct irc_message *message) {
+  parser->state = IRC_PARSER_STATE_DONE;
+}

@@ -8,6 +8,10 @@ set(LIBRARIES "")
 
 project(${BINARY_NAME} C)
 
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+	add_definitions(-DDEBUG=1)
+endif()
+
 find_path(PTHREADS_INCLUDE_DIR NAMES threads pthread pthreads)
 find_library(PTHREADS_LIBRARY NAMES threads pthread pthreads REQUIRED)
 if (PTHREADS_LIBRARY)

@@ -8,12 +8,12 @@
 
 struct irc_prefix {
   size_t length;
-  char *string;
+  char *value;
 };
 
 struct irc_command_parameter {
   size_t length;
-  char *string;
+  char *value;
 };
 
 enum irc_command_type {
@@ -25,7 +25,7 @@ struct irc_command {
   union {
     struct {
       size_t length;
-      char *name;
+      char *value;
     } name;
     int code;
   } command;

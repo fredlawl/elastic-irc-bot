@@ -110,6 +110,8 @@ int main() {
   while (true) {
     struct irc_message *msg = irc_message_parser_parse(parser);
 
+    // todo: print out message here for debugging in future
+
     if (irc_read_thread_stopped && !irc_message_parser_can_parse(parser)) {
       break;
     }
