@@ -85,11 +85,11 @@ struct irc_token *irc_lexer_get_next_token(struct irc_lexer *lexer) {
     return allocate_irc_token(IRC_TOKEN_NOSPCRLFCL, tok_value);
   }
 
-//  if (__is_letter(lexer->current_character)) {
-//    tok_value.character = lexer->current_character;
-//    __advance(lexer);
-//    return allocate_irc_token(IRC_TOKEN_LETTER, tok_value);
-//  }
+  if (__is_letter(lexer->current_character)) {
+    tok_value.character = lexer->current_character;
+    __advance(lexer);
+    return allocate_irc_token(IRC_TOKEN_LETTER, tok_value);
+  }
 
   if (__is_space(lexer->current_character)) {
     tok_value.character = '\x20';
@@ -165,7 +165,7 @@ static bool __is_nospcrlfcl(char character) {
       (character >= '\x0E' && character <= '\x1F') ||
       (character >= '\x21' && character <= '\x39') ||
       // erratum: Add (int) in front of character to prevent always false error
-      (character >= '\x3B' && (int) character <= '\xFF');
+      (character >= '\x3B' && character <= '\xFF');
 }
 
 static bool __is_letter(char character) {
