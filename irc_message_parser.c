@@ -29,6 +29,7 @@ typedef void (*handle_parser_state_t)(struct irc_message_parser *parser, struct 
 //static struct irc_command_parameter *__parse_command_parameter(struct irc_message_parser *parser);
 static inline struct irc_message *__allocate_irc_message();
 static void __eat_token(struct irc_message_parser *parser, enum irc_token_type expected_token_type);
+static inline void __force_advance(struct irc_message_parser *parser);
 
 static void __handle_prefix(struct irc_message_parser *parser, struct irc_message *message);
 static void __handle_command(struct irc_message_parser *parser, struct irc_message *message);
@@ -74,16 +75,10 @@ struct irc_message *irc_message_parser_parse(struct irc_message_parser *parser) 
   if (msg == NULL)
     return NULL;
 
-//  deallocate_irc_token(parser->current_token);
-//  parser->current_token = irc_lexer_get_next_token(parser->lexer);
-
   if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_EOF)) {
     __eat_token(parser, IRC_TOKEN_EOF);
     return NULL;
   }
-
-//  if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_NONE))
-//    return NULL;
 
   parser->state = IRC_PARSER_STATE_PREFIX;
 
@@ -146,8 +141,7 @@ static void __eat_token(struct irc_message_parser *parser, enum irc_token_type e
   current_token_type = irc_token_get_token_type(parser->current_token);
 
   if (irc_token_is_token_type(parser->current_token, expected_token_type)) {
-    deallocate_irc_token(parser->current_token);
-    parser->current_token = irc_lexer_get_next_token(parser->lexer);
+    __force_advance(parser);
     return;
   }
 
@@ -176,13 +170,13 @@ static void __handle_prefix(struct irc_message_parser *parser, struct irc_messag
       break;
     }
 
-    if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_LETTER)) {
-      __eat_token(parser, IRC_TOKEN_LETTER);
+    prefix_len++;
+
+    if (!irc_token_is_token_type(parser->current_token, IRC_TOKEN_NOSPCRLFCL)) {
+      __force_advance(parser);
     } else {
       __eat_token(parser, IRC_TOKEN_NOSPCRLFCL);
     }
-
-    prefix_len++;
   }
 
   prefix = (struct irc_prefix *) malloc(sizeof(struct irc_prefix));
@@ -206,5 +200,20 @@ static void __handle_command(struct irc_message_parser *parser, struct irc_messa
 }
 
 static void __handle_parameter(struct irc_message_parser *parser, struct irc_message *message) {
+
+  while (true) {
+    if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_EOL)) {
+      __eat_token(parser, IRC_TOKEN_EOL);
+      break;
+    }
+
+    __force_advance(parser);
+  }
+
   parser->state = IRC_PARSER_STATE_DONE;
+}
+
+static inline void __force_advance(struct irc_message_parser *parser) {
+  deallocate_irc_token(parser->current_token);
+  parser->current_token = irc_lexer_get_next_token(parser->lexer);
 }

@@ -164,8 +164,7 @@ static bool __is_nospcrlfcl(char character) {
       (character >= '\x0B' && character <= '\x0C') ||
       (character >= '\x0E' && character <= '\x1F') ||
       (character >= '\x21' && character <= '\x39') ||
-      // erratum: Add (int) in front of character to prevent always false error
-      (character >= '\x3B' && character <= '\xFF');
+      (character >= '\x3B' && character <= '\x7F');
 }
 
 static bool __is_letter(char character) {
