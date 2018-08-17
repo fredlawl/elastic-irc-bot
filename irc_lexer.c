@@ -79,10 +79,10 @@ struct irc_token *irc_lexer_get_next_token(struct irc_lexer *lexer) {
     return allocate_irc_token(IRC_TOKEN_COLON, tok_value);
   }
 
-  if (__is_nospcrlfcl(lexer->current_character)) {
-    tok_value.character = lexer->current_character;
+  if (__is_digit(lexer->current_character)) {
+    tok_value.integer = (int) lexer->current_character - (int) '0';
     __advance(lexer);
-    return allocate_irc_token(IRC_TOKEN_NOSPCRLFCL, tok_value);
+    return allocate_irc_token(IRC_TOKEN_DIGIT, tok_value);
   }
 
   if (__is_letter(lexer->current_character)) {
@@ -91,16 +91,17 @@ struct irc_token *irc_lexer_get_next_token(struct irc_lexer *lexer) {
     return allocate_irc_token(IRC_TOKEN_LETTER, tok_value);
   }
 
+  if (__is_nospcrlfcl(lexer->current_character)) {
+    tok_value.character = lexer->current_character;
+    __advance(lexer);
+    return allocate_irc_token(IRC_TOKEN_NOSPCRLFCL, tok_value);
+  }
+
   if (__is_space(lexer->current_character)) {
     tok_value.character = '\x20';
     __advance(lexer);
     return allocate_irc_token(IRC_TOKEN_SPACE, tok_value);
   }
-
-//  if (__is_digit(lexer->current_character)) {
-//    tok_value.integer = __parse_int(lexer);
-//    return allocate_irc_token(IRC_TOKEN_INTEGER_LITERAL, tok_value);
-//  }
 
   tok_value.character = '\0';
   __advance(lexer);

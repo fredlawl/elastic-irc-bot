@@ -89,7 +89,6 @@ struct irc_message *irc_message_parser_parse(struct irc_message_parser *parser) 
   // todo: remove
   if (msg->prefix != NULL) {
     printf("%s -- ", msg->prefix->value);
-    printf("\n");
   }
 
   if (msg->command != NULL) {
@@ -99,6 +98,8 @@ struct irc_message *irc_message_parser_parse(struct irc_message_parser *parser) 
       printf("%s", msg->command->command.name.value);
     }
   }
+
+  printf("\n");
   // --
 
   return msg;
@@ -135,6 +136,7 @@ static inline struct irc_message *__allocate_irc_message() {
   return msg;
 }
 
+// @todo: Make a variadic function
 static void __eat_token(struct irc_message_parser *parser, enum irc_token_type expected_token_type) {
   enum irc_token_type current_token_type;
 
@@ -171,12 +173,7 @@ static void __handle_prefix(struct irc_message_parser *parser, struct irc_messag
     }
 
     prefix_len++;
-
-    if (!irc_token_is_token_type(parser->current_token, IRC_TOKEN_NOSPCRLFCL)) {
-      __force_advance(parser);
-    } else {
-      __eat_token(parser, IRC_TOKEN_NOSPCRLFCL);
-    }
+    __force_advance(parser);
   }
 
   prefix = (struct irc_prefix *) malloc(sizeof(struct irc_prefix));
@@ -196,7 +193,76 @@ static void __handle_prefix(struct irc_message_parser *parser, struct irc_messag
 }
 
 static void __handle_command(struct irc_message_parser *parser, struct irc_message *message) {
+  size_t command_length = 0;
+  int command_number = 0;
+  int digit_state = 0;
+  struct irc_command *command;
+
+  if ((command = (struct irc_command *) malloc(sizeof(struct irc_command))) == NULL) {
+    fprintf(stderr, "Unable to allocate irc command.\n");
+    exit(EXIT_FAILURE);
+  }
+
+  command->parameter_count = 0;
+  command->datetime_created = 0; // @todo: Figure out the date time
+
+  while (true) {
+    if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_SPACE)) {
+      __eat_token(parser, IRC_TOKEN_SPACE);
+      goto validate_command;
+    }
+
+    if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_EOL)) {
+      __eat_token(parser, IRC_TOKEN_EOL);
+      goto validate_command;
+    }
+
+    if (digit_state == 0) {
+      if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_DIGIT))
+        digit_state = 1;
+      else
+        digit_state = 2;
+    }
+
+    if (digit_state == 1) {
+      __eat_token(parser, IRC_TOKEN_DIGIT);
+    }
+
+    if (digit_state == 2) {
+      command_length++;
+      __eat_token(parser, IRC_TOKEN_LETTER);
+    }
+
+  }
+
+validate_command:
+
+  if (digit_state == 0) {
+    free(command);
+    goto advance_state;
+  }
+
+  if (digit_state == 1) {
+    command->command_type = IRC_CMD_CODE;
+    // ... check for 3 digits
+  }
+
+  if (digit_state == 2) {
+    command->command.name.length = command_length;
+    command->command.name.value = (char *) malloc(sizeof(char) * command_length);
+
+    char *line = irc_lexer_get_current_line(parser->lexer);
+    strncpy(command->command.name.value, line + message->prefix->length + 1, command_length);
+    command->command.name.value[command_length] = '\0';
+
+    command->command_type = IRC_CMD_NAME;
+  }
+
+  message->command = command;
+
+advance_state:
   parser->state = IRC_PARSER_STATE_PARAM;
+
 }
 
 static void __handle_parameter(struct irc_message_parser *parser, struct irc_message *message) {
