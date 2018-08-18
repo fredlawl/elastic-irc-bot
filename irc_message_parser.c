@@ -15,6 +15,12 @@ enum irc_parser_state {
   IRC_PARSER_STATE_DONE
 };
 
+enum irc_command_parser_substate {
+  IRC_PARSER_SUBSTATE_NONE = 0,
+  IRC_PARSER_SUBSTATE_CODE,
+  IRC_PARSER_SUBSTATE_NAME
+};
+
 struct irc_message_parser {
   size_t prefix_handler_count;
   size_t command_handler_count;
@@ -86,12 +92,13 @@ struct irc_message *irc_message_parser_parse(struct irc_message_parser *parser) 
     parser_handlers[parser->state](parser, msg);
   }
 
-  // todo: remove
-  if (msg->prefix != NULL) {
-    printf("%s -- ", msg->prefix->value);
-  }
-
   if (msg->command != NULL) {
+    printf("[%s] -- ", asctime(gmtime(&msg->command->datetime_created)));
+
+    if (msg->prefix != NULL) {
+      printf("%s -- ", msg->prefix->value);
+    }
+
     if (msg->command->command_type == IRC_CMD_CODE) {
       printf("%i", msg->command->command.code);
     } else {
@@ -193,9 +200,9 @@ static void __handle_prefix(struct irc_message_parser *parser, struct irc_messag
 }
 
 static void __handle_command(struct irc_message_parser *parser, struct irc_message *message) {
-  size_t command_length = 0;
-  int command_number = 0;
-  int digit_state = 0;
+  size_t cmd_length = 0;
+  int cmd_code = 0;
+  int cmd_parser_substate = IRC_PARSER_SUBSTATE_NONE;
   struct irc_command *command;
 
   if ((command = (struct irc_command *) malloc(sizeof(struct irc_command))) == NULL) {
@@ -204,56 +211,62 @@ static void __handle_command(struct irc_message_parser *parser, struct irc_messa
   }
 
   command->parameter_count = 0;
-  command->datetime_created = 0; // @todo: Figure out the date time
+  command->datetime_created = time(NULL);
 
   while (true) {
     if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_SPACE)) {
       __eat_token(parser, IRC_TOKEN_SPACE);
-      goto validate_command;
+      break;
     }
 
     if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_EOL)) {
       __eat_token(parser, IRC_TOKEN_EOL);
-      goto validate_command;
+      break;
     }
 
-    if (digit_state == 0) {
+    if (cmd_parser_substate == IRC_PARSER_SUBSTATE_NONE) {
       if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_DIGIT))
-        digit_state = 1;
+        cmd_parser_substate = IRC_PARSER_SUBSTATE_CODE;
       else
-        digit_state = 2;
+        cmd_parser_substate = IRC_PARSER_SUBSTATE_NAME;
     }
 
-    if (digit_state == 1) {
+    cmd_length++;
+    if (cmd_parser_substate == IRC_PARSER_SUBSTATE_CODE) {
+      cmd_code = cmd_code * 10 + irc_token_get_token_value(parser->current_token).integer;
       __eat_token(parser, IRC_TOKEN_DIGIT);
     }
 
-    if (digit_state == 2) {
-      command_length++;
+    if (cmd_parser_substate == IRC_PARSER_SUBSTATE_NAME) {
       __eat_token(parser, IRC_TOKEN_LETTER);
     }
 
   }
 
-validate_command:
 
-  if (digit_state == 0) {
+  if (cmd_parser_substate == IRC_PARSER_SUBSTATE_NONE) {
     free(command);
     goto advance_state;
   }
 
-  if (digit_state == 1) {
+  if (cmd_parser_substate == IRC_PARSER_SUBSTATE_CODE) {
+    if (cmd_length != 3) {
+      fprintf(stderr, "Command must be 3 digits.\n");
+      exit(EXIT_FAILURE);
+    }
+
+    command->command.code = cmd_code;
     command->command_type = IRC_CMD_CODE;
-    // ... check for 3 digits
   }
 
-  if (digit_state == 2) {
-    command->command.name.length = command_length;
-    command->command.name.value = (char *) malloc(sizeof(char) * command_length);
+  if (cmd_parser_substate == IRC_PARSER_SUBSTATE_NAME) {
+    command->command.name.length = cmd_length;
+    command->command.name.value = (char *) malloc(sizeof(char) * cmd_length);
 
     char *line = irc_lexer_get_current_line(parser->lexer);
-    strncpy(command->command.name.value, line + message->prefix->length + 1, command_length);
-    command->command.name.value[command_length] = '\0';
+    size_t prefix_len = (message->prefix == NULL) ? 0 : message->prefix->length + 1;
+    strncpy(command->command.name.value, line + prefix_len, cmd_length);
+    command->command.name.value[cmd_length] = '\0';
 
     command->command_type = IRC_CMD_NAME;
   }

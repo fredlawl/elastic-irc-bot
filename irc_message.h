@@ -3,6 +3,7 @@
 #define ELASTIC_IRC_BOT_IRC_MESSAGE_H
 
 #include <unistd.h>
+#include <time.h>
 
 #include "irc_spec.h"
 

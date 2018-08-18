@@ -110,6 +110,13 @@ int main() {
   while (true) {
     struct irc_message *msg = irc_message_parser_parse(parser);
 
+    if (msg != NULL) {
+      if (msg->command->command_type == IRC_CMD_NAME && strcasecmp("PING", msg->command->command.name.value) == 0) {
+        printf("\nPONG\n");
+        send(socket_descriptor, "PONG chat.freenode.net\r\n", 26, 0);
+      }
+    }
+
     // todo: print out message here for debugging in future
 
     if (irc_read_thread_stopped && !irc_message_parser_can_parse(parser)) {
