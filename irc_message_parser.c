@@ -22,8 +22,6 @@ enum irc_command_parser_substate {
 };
 
 struct irc_message_parser {
-  size_t prefix_handler_count;
-  size_t command_handler_count;
   struct irc_lexer *lexer;
   struct irc_token *current_token;
   enum irc_parser_state state;
@@ -31,12 +29,9 @@ struct irc_message_parser {
 
 typedef void (*handle_parser_state_t)(struct irc_message_parser *parser, struct irc_message *message);
 
-//static struct irc_prefix *__parse_prefix(struct irc_message_parser *parser);
-//static struct irc_command_parameter *__parse_command_parameter(struct irc_message_parser *parser);
 static inline struct irc_message *__allocate_irc_message();
 static void __eat_token(struct irc_message_parser *parser, enum irc_token_type expected_token_type);
 static inline void __force_advance(struct irc_message_parser *parser);
-
 static void __handle_prefix(struct irc_message_parser *parser, struct irc_message *message);
 static void __handle_command(struct irc_message_parser *parser, struct irc_message *message);
 static void __handle_parameter(struct irc_message_parser *parser, struct irc_message *message);
@@ -58,8 +53,6 @@ struct irc_message_parser *allocate_irc_message_parser(struct irc_lexer *lexer) 
 
   token_value.character = '\0';
   parser->current_token = allocate_irc_token(IRC_TOKEN_EOF, token_value);
-  parser->prefix_handler_count = 0;
-  parser->command_handler_count = 0;
   parser->state = IRC_PARSER_STATE_PREFIX;
 
   return parser;
@@ -92,43 +85,32 @@ struct irc_message *irc_message_parser_parse(struct irc_message_parser *parser) 
     parser_handlers[parser->state](parser, msg);
   }
 
-  if (msg->command != NULL) {
-    printf("[%s] -- ", asctime(gmtime(&msg->command->datetime_created)));
-
-    if (msg->prefix != NULL) {
-      printf("%s -- ", msg->prefix->value);
-    }
-
-    if (msg->command->command_type == IRC_CMD_CODE) {
-      printf("%i", msg->command->command.code);
-    } else {
-      printf("%s", msg->command->command.name.value);
-    }
-  }
-
-  printf("\n");
-  // --
-
   return msg;
 }
 
-void deallocate_irc_message(struct irc_message *message) {
-  size_t i;
+void deallocate_irc_message(struct irc_message *msg) {
+  uint8_t i;
 
-  free(message->prefix->value);
-
-  if (message->command->command_type == IRC_CMD_NAME) {
-    free(message->command->command.name.value);
+  if (msg->prefix != NULL) {
+    free(msg->prefix->value);
+    free(msg->prefix);
   }
 
-  for (i = 0; i < message->command->parameter_count; i++) {
-    free(message->command->parameters[i]->value);
-    free(message->command->parameters[i]);
+
+  if (msg->command != NULL) {
+    if (irc_command_is_type(msg->command, IRC_CMD_NAME)) {
+      free(msg->command->command.name.value);
+    }
+
+    for (i = 0; i < msg->command->parameter_count; i++) {
+      free(msg->command->parameters[i]->value);
+      free(msg->command->parameters[i]);
+    }
+
+    free(msg->command);
   }
 
-  free(message->prefix);
-  free(message->command);
-  free(message);
+  free(msg);
 }
 
 static inline struct irc_message *__allocate_irc_message() {

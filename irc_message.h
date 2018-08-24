@@ -4,6 +4,8 @@
 
 #include <unistd.h>
 #include <time.h>
+#include <stdbool.h>
+#include <stdlib.h>
 
 #include "irc_spec.h"
 
@@ -30,7 +32,7 @@ struct irc_command {
     } name;
     int code;
   } command;
-  uint32_t parameter_count;
+  uint8_t parameter_count;
   struct irc_command_parameter *parameters[IRC_SPEC_MAX_COMMAND_PARAMETER_COUNT];
   enum irc_command_type command_type;
   time_t datetime_created;
@@ -40,5 +42,10 @@ struct irc_message {
   struct irc_prefix *prefix;
   struct irc_command *command;
 };
+
+inline
+static bool irc_command_is_type(struct irc_command *cmd, enum irc_command_type type) {
+  return cmd->command_type == type;
+}
 
 #endif

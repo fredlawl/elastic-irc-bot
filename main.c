@@ -9,7 +9,6 @@
 #include <stdbool.h>
 #include <signal.h>
 #include <sts_queue/sts_queue.h>
-
 #include <curl/curl.h>
 
 #include "irc_lexer.h"
@@ -110,14 +109,33 @@ int main() {
   while (true) {
     struct irc_message *msg = irc_message_parser_parse(parser);
 
-    if (msg != NULL) {
-      if (msg->command->command_type == IRC_CMD_NAME && strcasecmp("PING", msg->command->command.name.value) == 0) {
+
+    if (msg != NULL && msg->command != NULL) {
+      char *time_as_string = asctime(gmtime(&msg->command->datetime_created));
+      time_as_string[strlen(time_as_string) - 1] = '\0';
+      printf("[%s] ", time_as_string);
+
+      if (msg->prefix != NULL) {
+        printf("%s -- ", msg->prefix->value);
+      }
+
+      if (msg->command->command_type == IRC_CMD_CODE) {
+        printf("%i", msg->command->command.code);
+      } else {
+        printf("%s", msg->command->command.name.value);
+      }
+
+      printf("\n");
+
+      // todo: make this a listener
+      if (irc_command_is_type(msg->command, IRC_CMD_NAME) && strcasecmp("PING", msg->command->command.name.value) == 0) {
         printf("\nPONG\n");
         send(socket_descriptor, "PONG chat.freenode.net\r\n", 26, 0);
       }
+
+      deallocate_irc_message(msg);
     }
 
-    // todo: print out message here for debugging in future
 
     if (irc_read_thread_stopped && !irc_message_parser_can_parse(parser)) {
       break;
