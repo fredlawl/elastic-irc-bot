@@ -9,6 +9,10 @@ struct irc_message;
 
 struct irc_message_parser *allocate_irc_message_parser(struct irc_lexer *lexer);
 
+/**
+ * This frees the parser AND the lexter within the parser
+ * @param message
+ */
 void deallocate_irc_message_parser(struct irc_message_parser *parser);
 
 void deallocate_irc_message(struct irc_message *message);

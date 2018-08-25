@@ -6,6 +6,8 @@
 #include "irc_lexer.h"
 #include "irc_token.h"
 
+#include <assert.h>
+
 struct irc_lexer {
   StsHeader *line_buffer;
   char *current_line;
