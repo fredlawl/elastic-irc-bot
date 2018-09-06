@@ -15,22 +15,16 @@ static struct irc_message_parser *__parser;
 static struct irc_message *__get_message(char *line);
 
 void setup(void) {
-  puts("Runs before the test");
   __line_buffer = StsQueue.create();
   __lexer = allocate_irc_lexer(__line_buffer);
   __parser = allocate_irc_message_parser(__lexer);
 }
 
 void teardown(void) {
-  puts("Runs after the test");
   deallocate_irc_message_parser(__parser);
 }
 
-Test(suite_name, test_name, .init = setup, .fini = teardown) {
-//  cr_expect(strlen("Test") == 4, "Expected \"Test\" to have a length of 4.");
-//  cr_expect(strlen("Hello") == 4, "This will always fail, why did I add this?");
-//  cr_assert(strlen("") == 0);
-
+Test(irc_command_parsing, given_a_command_grab_name, .init = setup, .fini = teardown) {
   char *input_buffer = ":192.168.1.1 HELP someparam :someparam\r\n";
   struct irc_message *msg = __get_message(input_buffer);
 
@@ -38,6 +32,18 @@ Test(suite_name, test_name, .init = setup, .fini = teardown) {
     cr_assert(false);
 
   cr_assert(strcasecmp(msg->command->command.name.value, "HELP") == 0);
+
+  deallocate_irc_message(msg);
+}
+
+Test(irc_command_parsing, test_parameters, .init = setup, .fini = teardown) {
+  char *input_buffer = ":192.168.1.2 HELP someparam someparam2 :someparam\r\n";
+  struct irc_message *msg = __get_message(input_buffer);
+
+  if (msg == NULL)
+    cr_assert(false);
+
+  cr_assert(msg->command->parameter_count == 2);
 
   deallocate_irc_message(msg);
 }

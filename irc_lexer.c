@@ -149,6 +149,10 @@ struct irc_token *irc_lexer_peek_next_token(struct irc_lexer *lexer) {
   return next_token;
 }
 
+size_t irc_lexer_get_current_column(struct irc_lexer *lexer) {
+  return lexer->current_column;
+}
+
 static bool __is_space(char character) {
   return character == '\x20';
 }
