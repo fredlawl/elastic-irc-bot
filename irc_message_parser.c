@@ -261,30 +261,27 @@ advance_state:
 }
 
 static void __handle_parameter(struct irc_message_parser *parser, struct irc_message *message) {
-  bool in_trailing = false;
   bool kill = false;
   size_t param_character_counter = 0;
   struct irc_command_parameter *param = NULL;
   char *param_string = NULL;
   char *line = irc_lexer_get_current_line(parser->lexer);
+  size_t line_offset;
 
-  printf("before\n");
+  line_offset = irc_lexer_get_current_column(parser->lexer);
 
   while (true) {
 
     if (kill) {
-      printf("force killed\n");
       break;
     }
 
-    if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_EOL)) {
-      printf("eol1 reached\n");
-      __eat_token(parser, IRC_TOKEN_EOL);
+    if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_EOL) ||
+        irc_token_is_token_type(parser->current_token, IRC_TOKEN_NONE)) {
       break;
     }
 
     if (message->command->parameter_count > IRC_SPEC_MAX_COMMAND_PARAMETER_COUNT) {
-      printf("max param count reached\n");
       break;
     }
 
@@ -296,7 +293,8 @@ static void __handle_parameter(struct irc_message_parser *parser, struct irc_mes
 
         param = (struct irc_command_parameter *) malloc(sizeof(struct irc_command_parameter));
         param_string = (char *) malloc(sizeof(char) * param_character_counter);
-        strncpy(param_string, line + irc_lexer_get_current_column(parser->lexer), param_character_counter);
+
+        strncpy(param_string, line + line_offset - param_character_counter - 1, param_character_counter);
         param_string[param_character_counter] = '\0';
 
         param->length = param_character_counter;
@@ -304,10 +302,7 @@ static void __handle_parameter(struct irc_message_parser *parser, struct irc_mes
         message->command->parameters[message->command->parameter_count] = param;
         message->command->parameter_count++;
 
-        printf("(%llu) %s\n", message->command->parameter_count, param_string);
-
         if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_EOL)) {
-          printf("eol2 reached\n");
           kill = true;
           __eat_token(parser, IRC_TOKEN_EOL);
           break;
@@ -319,6 +314,7 @@ static void __handle_parameter(struct irc_message_parser *parser, struct irc_mes
       }
 
       param_character_counter++;
+      line_offset++;
       __force_advance(parser);
     }
   }

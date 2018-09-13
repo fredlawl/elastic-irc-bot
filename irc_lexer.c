@@ -7,6 +7,7 @@
 #include "irc_token.h"
 
 #include <assert.h>
+#include <stdio.h>
 
 struct irc_lexer {
   StsHeader *line_buffer;
@@ -21,8 +22,9 @@ static bool __is_colon(char character);
 static bool __is_digit(char character);
 static bool __is_nospcrlfcl(char character);
 static bool __is_letter(char character);
-static int __parse_int(struct irc_lexer *lexer);
-static char *__parse_word(struct irc_lexer *lexer);
+static bool __is_cr(char character);
+static bool __is_ln(char character);
+
 static void __advance(struct irc_lexer *lexer);
 
 struct irc_lexer *allocate_irc_lexer(StsHeader *line_buffer) {
@@ -105,6 +107,16 @@ struct irc_token *irc_lexer_get_next_token(struct irc_lexer *lexer) {
     return allocate_irc_token(IRC_TOKEN_SPACE, tok_value);
   }
 
+  if (__is_cr(lexer->current_character)) {
+    __advance(lexer);
+    if (__is_ln(lexer->current_character)) {
+      tok_value.character = '\0';
+      return allocate_irc_token(IRC_TOKEN_EOL, tok_value);
+    } else {
+      fprintf(stderr, "[FATAL PARSE ERROR] Expecting EOL\n");
+    }
+  }
+
   tok_value.character = '\0';
   __advance(lexer);
   return allocate_irc_token(IRC_TOKEN_NONE, tok_value);
@@ -179,17 +191,6 @@ static bool __is_letter(char character) {
       (character >= '\x61' && character <= '\x7A');
 }
 
-static int __parse_int(struct irc_lexer *lexer) {
-  int result = 0;
-
-  while (__is_digit(lexer->current_character)) {
-    result = result * 10 + (int) lexer->current_character - (int) '0';
-    __advance(lexer);
-  }
-
-  return result;
-}
-
 void __advance(struct irc_lexer *lexer) {
   lexer->current_column++;
 
@@ -199,4 +200,13 @@ void __advance(struct irc_lexer *lexer) {
   }
 
   lexer->current_character = lexer->current_line[lexer->current_column];
+}
+
+bool __is_cr(char character) {
+  return character == '\r';
+}
+
+
+bool __is_ln(char character) {
+  return character == '\n';
 }

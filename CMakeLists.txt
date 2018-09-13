@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 
 set(BINARY_NAME elastic_irc_bot)
 set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wshadow -Wextra -Wvla -Wmissing-field-initializers")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/bin)
 set(LIBRARIES "")
 set(TEST_LIBRARIES "")
