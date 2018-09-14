@@ -137,7 +137,7 @@ static void __eat_token(struct irc_message_parser *parser, enum irc_token_type e
   }
 
   fprintf(stderr, "[FATAL PARSE ERROR] There was an error parsing input. ");
-  fprintf(stderr, "Expecting token %i but got %i instead.", expected_token_type, current_token_type);
+  fprintf(stderr, "Expecting token %i but got %i instead.\n", expected_token_type, current_token_type);
 
   exit(EXIT_FAILURE);
 }
@@ -262,6 +262,7 @@ advance_state:
 
 static void __handle_parameter(struct irc_message_parser *parser, struct irc_message *message) {
   bool kill = false;
+  bool notcolon = true;
   size_t param_character_counter = 0;
   struct irc_command_parameter *param = NULL;
   char *param_string = NULL;
@@ -282,18 +283,28 @@ static void __handle_parameter(struct irc_message_parser *parser, struct irc_mes
     }
 
     if (message->command->parameter_count > IRC_SPEC_MAX_COMMAND_PARAMETER_COUNT) {
+      fprintf(stderr, "[FATAL PARSE ERROR] Parameter count exceeded.\n");
+      exit(EXIT_FAILURE);
       break;
     }
 
     param_character_counter = 0;
     while (true) {
 
-      if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_SPACE) ||
+      if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_COLON) && notcolon) {
+        notcolon = false;
+        line_offset++;
+        __eat_token(parser, IRC_TOKEN_COLON);
+        continue;
+      }
+
+      if ((irc_token_is_token_type(parser->current_token, IRC_TOKEN_SPACE) && notcolon) ||
           irc_token_is_token_type(parser->current_token, IRC_TOKEN_EOL)) {
 
         param = (struct irc_command_parameter *) malloc(sizeof(struct irc_command_parameter));
         param_string = (char *) malloc(sizeof(char) * param_character_counter);
 
+        line_offset = (line_offset - message->command->parameter_count);
         strncpy(param_string, line + line_offset - param_character_counter - 1, param_character_counter);
         param_string[param_character_counter] = '\0';
 
@@ -311,6 +322,12 @@ static void __handle_parameter(struct irc_message_parser *parser, struct irc_mes
         }
 
         break;
+      }
+
+      if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_COLON)) {
+        fprintf(stderr, "[FATAL PARSE ERROR] There was an error parsing input. ");
+        fprintf(stderr, "Expecting token %i but got %i instead.\n", IRC_TOKEN_NOSPCRLFCL, IRC_TOKEN_COLON);
+        exit(EXIT_FAILURE);
       }
 
       param_character_counter++;
