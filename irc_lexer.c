@@ -165,6 +165,10 @@ size_t irc_lexer_get_current_column(struct irc_lexer *lexer) {
   return lexer->current_column;
 }
 
+size_t irc_lexer_get_current_line_length(struct irc_lexer *lexer) {
+  return lexer->current_line_length;
+}
+
 static bool __is_space(char character) {
   return character == '\x20';
 }

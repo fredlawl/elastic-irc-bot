@@ -19,6 +19,8 @@ struct irc_token *irc_lexer_peek_next_token(struct irc_lexer *lexer);
 
 char *irc_lexer_get_current_line(struct irc_lexer *lexer);
 
+size_t irc_lexer_get_current_line_length(struct irc_lexer *lexer);
+
 size_t irc_lexer_get_current_column(struct irc_lexer *lexer);
 
 #endif

@@ -36,6 +36,10 @@ static void __handle_prefix(struct irc_message_parser *parser, struct irc_messag
 static void __handle_command(struct irc_message_parser *parser, struct irc_message *message);
 static void __handle_parameter(struct irc_message_parser *parser, struct irc_message *message);
 
+static void __expecting_error(struct irc_message_parser *parser,
+                              enum irc_token_type expected,
+                              enum irc_token_type got);
+
 static handle_parser_state_t parser_handlers[] = {
     &__handle_prefix,
     &__handle_command,
@@ -136,8 +140,7 @@ static void __eat_token(struct irc_message_parser *parser, enum irc_token_type e
     return;
   }
 
-  fprintf(stderr, "[FATAL PARSE ERROR] There was an error parsing input. ");
-  fprintf(stderr, "Expecting token %i but got %i instead.\n", expected_token_type, current_token_type);
+  __expecting_error(parser, expected_token_type, current_token_type);
 
   exit(EXIT_FAILURE);
 }
@@ -324,12 +327,6 @@ static void __handle_parameter(struct irc_message_parser *parser, struct irc_mes
         break;
       }
 
-      if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_COLON)) {
-        fprintf(stderr, "[FATAL PARSE ERROR] There was an error parsing input. ");
-        fprintf(stderr, "Expecting token %i but got %i instead.\n", IRC_TOKEN_NOSPCRLFCL, IRC_TOKEN_COLON);
-        exit(EXIT_FAILURE);
-      }
-
       param_character_counter++;
       line_offset++;
       __force_advance(parser);
@@ -342,4 +339,19 @@ static void __handle_parameter(struct irc_message_parser *parser, struct irc_mes
 static inline void __force_advance(struct irc_message_parser *parser) {
   deallocate_irc_token(parser->current_token);
   parser->current_token = irc_lexer_get_next_token(parser->lexer);
+}
+
+void __expecting_error(struct irc_message_parser *parser,
+                       enum irc_token_type expected,
+                       enum irc_token_type got) {
+
+  struct irc_lexer *lex = parser->lexer;
+  char *line = irc_lexer_get_current_line(lex);
+  line[irc_lexer_get_current_line_length(lex) - 2] = '\0';
+  line[irc_lexer_get_current_line_length(lex) - 1] = '\0';
+
+  fprintf(stderr, "[FATAL PARSE ERROR] There was an error parsing input. ");
+  fprintf(stderr, "Expecting token %i but got %i instead in the line ", expected, got);
+  fprintf(stderr, "\"%s\"\n", line);
+
 }

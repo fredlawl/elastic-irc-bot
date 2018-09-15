@@ -125,6 +125,12 @@ int main() {
         printf("%s", msg->command->command.name.value);
       }
 
+      printf(" -- ");
+
+      for (uint8_t i = 0; i < msg->command->parameter_count; i++) {
+        printf("%s ", msg->command->parameters[i]->value);
+      }
+
       printf("\n");
 
       // todo: make this a listener
