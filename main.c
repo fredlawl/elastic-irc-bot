@@ -109,7 +109,6 @@ int main() {
   while (true) {
     struct irc_message *msg = irc_message_parser_parse(parser);
 
-
     if (msg != NULL && msg->command != NULL) {
       char *time_as_string = asctime(gmtime(&msg->command->datetime_created));
       time_as_string[strlen(time_as_string) - 1] = '\0';

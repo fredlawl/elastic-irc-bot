@@ -115,17 +115,17 @@ Test(irc_command_parsing, given_trailing_parameter_test_spaces_are_allowed, .ini
 }
 
 Test(irc_command_parsing, given_a_parameter_with_extra_colon_succeeds, .init = setup, .fini = teardown, .exit_code = EXIT_SUCCESS) {
-  char *input_buffer = ":192.168.1.2 HELP someparam :someparam :cool beans bro\r\n";
+  char *input_buffer = ":192.168.1.2 HELP someparam :someparam 2018-09-19 00:00:00\r\n";
   struct irc_message *msg = __get_message(input_buffer);
 
   if (msg == NULL)
     cr_assert(false);
 
-  cr_assert(msg->command->parameter_count == 2);
+  cr_assert(msg->command->parameters[0]->length == strlen("someparam"));
+  cr_assert(msg->command->parameters[1]->length == strlen("someparam 2018-09-19 00:00:00"));
 
   deallocate_irc_message(msg);
 }
-
 
 Test(irc_command_parsing, given_parameters_test_trailing_does_not_include_colon, .init = setup, .fini = teardown, .exit_code = EXIT_SUCCESS) {
   char *input_buffer = ":192.168.1.2 HELP :cool beans bro\r\n";
@@ -135,6 +135,19 @@ Test(irc_command_parsing, given_parameters_test_trailing_does_not_include_colon,
     cr_assert(false);
 
   cr_assert(msg->command->parameters[msg->command->parameter_count - 1]->value[0] != ':');
+
+  deallocate_irc_message(msg);
+}
+
+Test(irc_command_parsing, given_notice_command_parse_fully, .init = setup, .fini = teardown, .exit_code = EXIT_SUCCESS) {
+  char *input_buffer = ":card.freenode.net NOTICE * :*** Found your hostname\r\n";
+  struct irc_message *msg = __get_message(input_buffer);
+
+  if (msg == NULL)
+    cr_assert(false);
+
+  cr_assert_str_eq(msg->command->parameters[0]->value, "*");
+  cr_assert_str_eq(msg->command->parameters[1]->value, "*** Found your hostname");
 
   deallocate_irc_message(msg);
 }

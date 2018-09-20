@@ -307,7 +307,7 @@ static void __handle_parameter(struct irc_message_parser *parser, struct irc_mes
         param = (struct irc_command_parameter *) malloc(sizeof(struct irc_command_parameter));
         param_string = (char *) malloc(sizeof(char) * param_character_counter);
 
-        line_offset = (line_offset - message->command->parameter_count);
+        line_offset = (line_offset + message->command->parameter_count);
         strncpy(param_string, line + line_offset - param_character_counter - 1, param_character_counter);
         param_string[param_character_counter] = '\0';
 
