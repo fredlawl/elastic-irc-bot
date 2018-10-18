@@ -20,13 +20,19 @@
 
 #define SERVER_IP "38.229.70.22"
 #define SERVER_PORT 6667
+#define IRC_PASS "PASS secretpass\r\n"
+#define IRC_NICK "NICK cezizle\r\n"
+#define IRC_CONNECT "USER cezizle 127.0.0.1 chat.freenode.net :Yip yop\r\n"
+#define IRC_CHANNEL "JOIN #flawlztest\r\n"
 
 static int socket_descriptor;
 static volatile bool irc_read_thread_stopped = false;
 
-void test(void *test) {
-  printf("bound and called\n");
-}
+static struct elastic_search* elastic_search;
+static struct elastic_search_connection* elastic_search_connection;
+
+void write_irc_message_to_elastic_search_listener(void *data);
+void irc_ping_pong_listener(void *data);
 
 struct irc_read_buffer_args {
   StsHeader *queue;
@@ -44,16 +50,41 @@ int main() {
   StsHeader *queue;
   struct irc_read_buffer_args thread_args;
   struct irc_message_parser *parser;
+  struct message_bus* main_message_bus = allocate_message_bus(5);
+
+  // todo: Let users know in stderr that the bus was not allocated
+  if (main_message_bus == NULL) {
+    return EXIT_FAILURE;
+  }
 
   if (curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
     return EXIT_FAILURE;
   }
 
+  // todo: s/elastic_search/elasticsearch/
+  elastic_search = allocate_elastic_search();
+  if (elastic_search == NULL) {
+    // todo: Let users know in stderr that connetion to elasticsearch didn't work
+    return EXIT_FAILURE;
+  }
+
+  elastic_search_connection = elastic_search_connect(elastic_search, "http://localhost:9200");
+  if (elastic_search_connection == NULL) {
+    deallocate_elastic_search(elastic_search);
+    // todo: Let users know in stderr that connetion to elasticsearch didn't work
+    return EXIT_FAILURE;
+  }
+
+  elastic_search_create_index_if_not_exists(elastic_search_connection, "elastic_irc_bot", "privmsg");
+
+  message_bus_bind_listener(main_message_bus, &write_irc_message_to_elastic_search_listener);
+  message_bus_bind_listener(main_message_bus, &irc_ping_pong_listener);
+
   char *cmds[] = {
-      "PASS secretpass\r\n",
-      "NICK cezizle\r\n",
-      "USER cezizle 127.0.0.1 chat.freenode.net :Yip yop\r\n",
-      "JOIN #flawlztest\r\n"
+      IRC_PASS,
+      IRC_NICK,
+      IRC_CONNECT,
+      IRC_CHANNEL
   };
 
   signal(SIGKILL, &signal_termination_handler);
@@ -105,42 +136,13 @@ int main() {
 
   parser = allocate_irc_message_parser(lexer);
 
-
   while (true) {
     struct irc_message *msg = irc_message_parser_parse(parser);
 
     if (msg != NULL && msg->command != NULL) {
-      char *time_as_string = asctime(gmtime(&msg->command->datetime_created));
-      time_as_string[strlen(time_as_string) - 1] = '\0';
-      printf("[%s] ", time_as_string);
-
-      if (msg->prefix != NULL) {
-        printf("%s -- ", msg->prefix->value);
-      }
-
-      if (msg->command->command_type == IRC_CMD_CODE) {
-        printf("%i", msg->command->command.code);
-      } else {
-        printf("%s", msg->command->command.name.value);
-      }
-
-      printf(" -- ");
-
-      for (uint8_t i = 0; i < msg->command->parameter_count; i++) {
-        printf("%s ", msg->command->parameters[i]->value);
-      }
-
-      printf("\n");
-
-      // todo: make this a listener
-      if (irc_command_is_type(msg->command, IRC_CMD_NAME) && strcasecmp("PING", msg->command->command.name.value) == 0) {
-        printf("\nPONG\n");
-        send(socket_descriptor, "PONG chat.freenode.net\r\n", 26, 0);
-      }
-
+      message_bus_send_message(main_message_bus, (void *)msg);
       deallocate_irc_message(msg);
     }
-
 
     if (irc_read_thread_stopped && !irc_message_parser_can_parse(parser)) {
       break;
@@ -158,6 +160,8 @@ int main() {
     fprintf(stderr, "Error joining thread\n");
     return EXIT_FAILURE;
   }
+
+  elastic_search_disconnect(elastic_search_connection);
 
   curl_global_cleanup();
 
@@ -216,4 +220,47 @@ void signal_termination_handler(int signal_num) {
   send(socket_descriptor, "QUIT\r\n", 7, 0);
   shutdown(socket_descriptor, SHUT_RDWR);
   printf("Sent quit cmd\n");
+}
+
+void write_irc_message_to_elastic_search_listener(void *data)
+{
+  struct irc_message* msg = (struct irc_message*) data;
+
+  if (!irc_command_is_type(msg->command, IRC_CMD_NAME) || strcasecmp("PRIVMSG", msg->command->command.name.value) != 0) {
+    return;
+  }
+
+  char *time_as_string = asctime(gmtime(&msg->command->datetime_created));
+
+  time_as_string[strlen(time_as_string) - 1] = '\0';
+  printf("[%s] ", time_as_string);
+
+  if (msg->prefix != NULL) {
+    printf("%s -- ", msg->prefix->value);
+  }
+
+  if (msg->command->command_type == IRC_CMD_CODE) {
+    printf("%i", msg->command->command.code);
+  } else {
+    printf("%s", msg->command->command.name.value);
+  }
+
+  printf(" -- ");
+
+  for (uint8_t i = 0; i < msg->command->parameter_count; i++) {
+    printf("%s ", msg->command->parameters[i]->value);
+  }
+
+  printf("\n");
+}
+
+
+void irc_ping_pong_listener(void *data)
+{
+  struct irc_message* msg = (struct irc_message*) data;
+
+  if (irc_command_is_type(msg->command, IRC_CMD_NAME) && strcasecmp("PING", msg->command->command.name.value) == 0) {
+    printf("\nPONG\n");
+    send(socket_descriptor, "PONG chat.freenode.net\r\n", 26, 0);
+  }
 }
