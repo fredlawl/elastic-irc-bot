@@ -3,11 +3,13 @@
 #include <string.h>
 
 #include "elastic_search.h"
+#include "irc_message.h"
 
 #define MAX_URL_BUFF 250
 
 struct elastic_search {
-
+  char *index_name;
+  char *document_name;
 };
 
 struct elastic_search_connection {
@@ -21,14 +23,27 @@ struct elastic_search_connection {
 };
 
 static char *__append_index_document(struct elastic_search_connection *connection, char *index, char *document, char *additional);
-static size_t __curl_write(void *buffer, size_t size, size_t nmemb, void *userdata);
+static size_t __curl_write(char *buffer, size_t size, size_t nmemb, void *userdata);
 
-struct elastic_search *allocate_elastic_search() {
+struct elastic_search *allocate_elastic_search(char *index_name, char *document_name) {
   struct elastic_search *search;
 
   if ((search = (struct elastic_search *) malloc(sizeof(struct elastic_search))) == NULL) {
     return NULL;
   }
+
+  search->index_name = (char *) malloc(sizeof(char) * strlen(index_name));
+  search->document_name = (char *) malloc(sizeof(char) * strlen(document_name));
+
+  if (search->index_name == NULL || search->document_name == NULL) {
+    free(search->index_name);
+    free(search->document_name);
+    free(search);
+    return NULL;
+  }
+
+  strcpy(search->index_name, index_name);
+  strcpy(search->document_name, document_name);
 
   return search;
 }
@@ -41,20 +56,24 @@ struct elastic_search_connection *elastic_search_connect(struct elastic_search *
   struct elastic_search_connection *con;
 
   con = (struct elastic_search_connection *) malloc(sizeof(struct elastic_search_connection));
+  if (con == NULL)
+    return NULL;
+
   con->base_url_len = strlen(url);
   con->base_url = (char *) malloc(sizeof(char) * con->base_url_len);
+  con->search = search;
 
-  if (con == NULL || con->base_url == NULL) {
+  if (con->base_url == NULL) {
     free(con);
-    free(con->base_url);
-    curl_easy_cleanup(con->curl);
     return NULL;
   }
 
+  strcpy(con->base_url, url);
+
   con->curl = curl_easy_init();
   if (con->curl == NULL) {
-    free(con);
     free(con->base_url);
+    free(con);
     return NULL;
   }
 
@@ -62,21 +81,17 @@ struct elastic_search_connection *elastic_search_connect(struct elastic_search *
   memset(con->curl_error_buffer, '\0', CURL_ERROR_SIZE);
 #endif
 
-  strcpy(con->base_url, url);
-
   curl_easy_setopt(con->curl, CURLOPT_FOLLOWLOCATION, 1L);
   curl_easy_setopt(con->curl, CURLOPT_NOPROGRESS, 1L);
   curl_easy_setopt(con->curl, CURLOPT_NOBODY, 0L);
   curl_easy_setopt(con->curl, CURLOPT_WRITEFUNCTION, &__curl_write);
   curl_easy_setopt(con->curl, CURLOPT_WRITEDATA, NULL);
+  curl_easy_setopt(con->curl, CURLOPT_VERBOSE, 0L);
 
 #ifdef DEBUG
-  curl_easy_setopt(con->curl, CURLOPT_NOBODY, 1L);
   curl_easy_setopt(con->curl, CURLOPT_ERRORBUFFER, &con->curl_error_buffer);
   curl_easy_setopt(con->curl, CURLOPT_VERBOSE, 1L);
 #endif
-
-  con->search = search;
 
   // TODO: Ping server first to see if it's up
   // TODO: Setup error flags incase there's an error for clients to see what's going on
@@ -97,83 +112,42 @@ bool elastic_search_disconnect(struct elastic_search_connection *connection) {
   return true;
 }
 
-bool elastic_search_create_index_if_not_exists(struct elastic_search_connection *connection, char *index_name, char *document_name) {
+bool elastic_search_insert(struct elastic_search_connection *connection, struct irc_message *msg)
+{
   char *url;
+  char *time_as_string;
+  char *payload;
   struct curl_slist *headers = NULL;
 
   if (connection->curl == NULL)
     return false;
 
-  url = __append_index_document(connection, index_name, NULL, NULL);
 
-  headers = curl_slist_append(headers, "Content-Type: application/json");
+  char *format = "{"
+                    "\"username\": \"%s\","
+                    "\"message\": \"%s\","
+                    "\"datetime_created\": \"%s\""
+                    "\"channel\": \"%s\""
+                  "}";
 
-  curl_easy_setopt(connection->curl, CURLOPT_URL, url);
-  curl_easy_setopt(connection->curl, CURLOPT_CUSTOMREQUEST, "PUT");
-  curl_easy_setopt(connection->curl, CURLOPT_HTTPHEADER, headers);
-  curl_easy_setopt(connection->curl, CURLOPT_POSTFIELDS, "{"
-                                                                 "\"settings\": {"
-                                                                 "\"index\": {"
-                                                                 "\"number_of_shards\": \"5\","
-                                                                 "\"number_of_replicas\": \"1\""
-                                                                 "}"
-                                                                 "},"
-                                                                 "\"mappings\": {"
-                                                                 "\"doctest3\": {"
-                                                                 "\"properties\": {"
-                                                                 "\"username\": {"
-                                                                 "\"type\": \"text\""
-                                                                 "},"
-                                                                 "\"message\": {"
-                                                                 "\"type\": \"text\""
-                                                                 "},"
-                                                                 "\"datetime_created\": {"
-                                                                 "\"type\": \"date\","
-                                                                 "\"format\": \"strict_date_optional_time||epoch_millis\""
-                                                                 "}"
-                                                                 "}"
-                                                                 "}"
-                                                                 "}"
-                                                                 "}");
+  time_as_string = asctime(gmtime(&msg->command->datetime_created));
+  time_as_string[strlen(time_as_string) - 1] = '\0';
 
-  // TODO: Add in curl opt for getting *just* the status code
+  size_t buffer_length = strlen(format) + strlen(time_as_string) + msg->prefix->length +  msg->command->parameters[0]->length + msg->command->parameters[1]->length;
+  payload = (char *) malloc(sizeof(char) * buffer_length);
 
-
-  if (curl_easy_perform(connection->curl) != CURLE_OK) {
-#ifdef DEBUG
-    fprintf(stderr, "Error with curl\n%s\n", connection->curl_error_buffer);
-#endif
-    curl_slist_free_all(headers);
-    free(url);
-    return false;
-  }
-
-  curl_slist_free_all(headers);
-  free(url);
-
-  return true;
-}
-
-
-bool elastic_search_insert(struct elastic_search_connection *connection, char *index_name, char *document_name) {
-  char *url;
-  struct curl_slist *headers = NULL;
-
-  if (connection->curl == NULL)
+  if (payload == NULL)
     return false;
 
-  url = __append_index_document(connection, index_name, document_name, NULL);
+  snprintf(payload, buffer_length, format, msg->prefix->value, msg->command->parameters[1]->value, time_as_string, msg->command->parameters[0]->value);
 
+  url = __append_index_document(connection, connection->search->index_name, connection->search->document_name, NULL);
   headers = curl_slist_append(headers, "Content-Type: application/json");
 
   curl_easy_setopt(connection->curl, CURLOPT_URL, url);
   curl_easy_setopt(connection->curl, CURLOPT_CUSTOMREQUEST, "POST");
   curl_easy_setopt(connection->curl, CURLOPT_HTTPHEADER, headers);
-  curl_easy_setopt(connection->curl, CURLOPT_POSTFIELDS, "{"
-                                                                 "\"username\": \"flawlztest\","
-                                                                 "\"message\": \"create a message\","
-                                                                 "\"datetime_created\": \"2018-08-03T00:24:08+00:00\""
-                                                                 "}");
+  curl_easy_setopt(connection->curl, CURLOPT_POSTFIELDS, payload);
 
   // TODO: Add in curl opt for getting *just* the status code
 
@@ -221,8 +195,8 @@ static char * __append_index_document(struct elastic_search_connection *connecti
   return built_url;
 }
 
-static size_t __curl_write(void *buffer, size_t size, size_t nmemb, void *userdata) {
+static size_t __curl_write(char *buffer, size_t size, size_t nmemb, void *userdata) {
   // do nothing
-  printf("Called\n");
+  printf("%s\n", buffer);
   return size * nmemb;
 }

@@ -28,8 +28,8 @@
 static int socket_descriptor;
 static volatile bool irc_read_thread_stopped = false;
 
-static struct elastic_search* elastic_search;
-static struct elastic_search_connection* elastic_search_connection;
+static struct elastic_search* elasticsearch;
+static struct elastic_search_connection* elastic_connection;
 
 void write_irc_message_to_elastic_search_listener(void *data);
 void irc_ping_pong_listener(void *data);
@@ -62,20 +62,18 @@ int main() {
   }
 
   // todo: s/elastic_search/elasticsearch/
-  elastic_search = allocate_elastic_search();
-  if (elastic_search == NULL) {
+  elasticsearch = allocate_elastic_search("elastic_irc_bot", "privmsg");
+  if (elasticsearch == NULL) {
     // todo: Let users know in stderr that connetion to elasticsearch didn't work
     return EXIT_FAILURE;
   }
 
-  elastic_search_connection = elastic_search_connect(elastic_search, "http://localhost:9200");
-  if (elastic_search_connection == NULL) {
-    deallocate_elastic_search(elastic_search);
+  elastic_connection = elastic_search_connect(elasticsearch, "http://localhost:9200");
+  if (elastic_connection == NULL) {
+    deallocate_elastic_search(elasticsearch);
     // todo: Let users know in stderr that connetion to elasticsearch didn't work
     return EXIT_FAILURE;
   }
-
-  elastic_search_create_index_if_not_exists(elastic_search_connection, "elastic_irc_bot", "privmsg");
 
   message_bus_bind_listener(main_message_bus, &write_irc_message_to_elastic_search_listener);
   message_bus_bind_listener(main_message_bus, &irc_ping_pong_listener);
@@ -129,7 +127,7 @@ int main() {
 
   cmds_array_len = sizeof(cmds) / sizeof(char *);
 
-  for (int i = 0; i < cmds_array_len; i++) {
+  for (size_t i = 0; i < cmds_array_len; i++) {
     printf("Sending: %s\n", cmds[i]);
     send(socket_descriptor, cmds[i], strlen(cmds[i]), 0);
   }
@@ -161,7 +159,7 @@ int main() {
     return EXIT_FAILURE;
   }
 
-  elastic_search_disconnect(elastic_search_connection);
+  elastic_search_disconnect(elastic_connection);
 
   curl_global_cleanup();
 
@@ -250,6 +248,8 @@ void write_irc_message_to_elastic_search_listener(void *data)
   for (uint8_t i = 0; i < msg->command->parameter_count; i++) {
     printf("%s ", msg->command->parameters[i]->value);
   }
+
+  elastic_search_insert(elastic_connection, msg);
 
   printf("\n");
 }
