@@ -25,14 +25,16 @@
 #define IRC_CONNECT "USER cezizle 127.0.0.1 chat.freenode.net :Yip yop\r\n"
 #define IRC_CHANNEL "JOIN #flawlztest\r\n"
 
+#define MESSAGE_BUS_TYPE_IRC_MSG 1
+
 static int socket_descriptor;
 static volatile bool irc_read_thread_stopped = false;
 
 static struct elastic_search* elasticsearch;
 static struct elastic_search_connection* elastic_connection;
 
-void write_irc_message_to_elastic_search_listener(void *data);
-void irc_ping_pong_listener(void *data);
+void write_irc_message_to_elastic_search_listener(struct message_envelope *envelope);
+void irc_ping_pong_listener(struct message_envelope *envelope);
 
 struct irc_read_buffer_args {
   StsHeader *queue;
@@ -135,12 +137,23 @@ int main() {
   parser = allocate_irc_message_parser(lexer);
 
   while (true) {
-    struct irc_message *msg = irc_message_parser_parse(parser);
+    struct message_envelope* envelope;
+    struct irc_message *msg;
 
+    if ((envelope = (struct message_envelope*)malloc(sizeof(struct message_envelope))) == NULL) {
+      continue;
+    }
+
+    msg = irc_message_parser_parse(parser);
     if (msg != NULL && msg->command != NULL) {
-      message_bus_send_message(main_message_bus, (void *)msg);
+      envelope->message_type = MESSAGE_BUS_TYPE_IRC_MSG;
+      envelope->data =  (void *) msg;
+
+      message_bus_send_message(main_message_bus, envelope);
       deallocate_irc_message(msg);
     }
+
+    free(envelope);
 
     if (irc_read_thread_stopped && !irc_message_parser_can_parse(parser)) {
       break;
@@ -220,15 +233,21 @@ void signal_termination_handler(int signal_num) {
   printf("Sent quit cmd\n");
 }
 
-void write_irc_message_to_elastic_search_listener(void *data)
+void write_irc_message_to_elastic_search_listener(struct message_envelope *envelope)
 {
-  struct irc_message* msg = (struct irc_message*) data;
+  struct irc_message* msg;
+  char *time_as_string;
+
+  if (envelope->message_type != MESSAGE_BUS_TYPE_IRC_MSG)
+    return;
+
+  msg = (struct irc_message*) envelope->data;
 
   if (!irc_command_is_type(msg->command, IRC_CMD_NAME) || strcasecmp("PRIVMSG", msg->command->command.name.value) != 0) {
     return;
   }
 
-  char *time_as_string = asctime(gmtime(&msg->command->datetime_created));
+  time_as_string = asctime(gmtime(&msg->command->datetime_created));
 
   time_as_string[strlen(time_as_string) - 1] = '\0';
   printf("[%s] ", time_as_string);
@@ -249,15 +268,20 @@ void write_irc_message_to_elastic_search_listener(void *data)
     printf("%s ", msg->command->parameters[i]->value);
   }
 
-  elastic_search_insert(elastic_connection, msg);
+//  elastic_search_insert(elastic_connection, msg);
 
   printf("\n");
 }
 
 
-void irc_ping_pong_listener(void *data)
+void irc_ping_pong_listener(struct message_envelope *envelope)
 {
-  struct irc_message* msg = (struct irc_message*) data;
+  struct irc_message* msg;
+
+  if (envelope->message_type != MESSAGE_BUS_TYPE_IRC_MSG)
+    return;
+
+  msg = (struct irc_message*) envelope->data;
 
   if (irc_command_is_type(msg->command, IRC_CMD_NAME) && strcasecmp("PING", msg->command->command.name.value) == 0) {
     printf("\nPONG\n");

@@ -7,6 +7,23 @@
 
 #define MAX_URL_BUFF 250
 
+//void escape_str(char *dest, char *src)
+//{
+//  *dest = 0;
+//  while(*src)
+//  {
+//    switch(*src)
+//    {
+//      case '\n' : strcat(dest++, "\\n"); break;
+//      case '\"' : strcat(dest++, "\\\""); break;
+//      default:  *dest = *src;
+//    }
+//    *src++;
+//    *dest++;
+//    *dest = 0;
+//  }
+//}
+
 struct elastic_search {
   char *index_name;
   char *document_name;
@@ -118,6 +135,7 @@ bool elastic_search_insert(struct elastic_search_connection *connection, struct 
   char *time_as_string;
   char *payload;
   struct curl_slist *headers = NULL;
+  size_t buffer_length;
 
   if (connection->curl == NULL)
     return false;
@@ -126,15 +144,16 @@ bool elastic_search_insert(struct elastic_search_connection *connection, struct 
   char *format = "{"
                     "\"username\": \"%s\","
                     "\"message\": \"%s\","
-                    "\"datetime_created\": \"%s\""
+                    "\"datetime_created\": \"%s\","
                     "\"channel\": \"%s\""
                   "}";
 
   time_as_string = asctime(gmtime(&msg->command->datetime_created));
   time_as_string[strlen(time_as_string) - 1] = '\0';
 
-  size_t buffer_length = strlen(format) + strlen(time_as_string) + msg->prefix->length +  msg->command->parameters[0]->length + msg->command->parameters[1]->length;
-  payload = (char *) malloc(sizeof(char) * buffer_length);
+  buffer_length = strlen(format) + strlen(time_as_string) + msg->prefix->length +  msg->command->parameters[0]->length + msg->command->parameters[1]->length;
+
+  payload = (char *) calloc(sizeof(char), buffer_length);
 
   if (payload == NULL)
     return false;

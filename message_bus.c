@@ -42,9 +42,9 @@ void message_bus_bind_listener(struct message_bus *bus,
   bus->listener_count++;
 }
 
-void message_bus_send_message(struct message_bus *bus, void *data) {
+void message_bus_send_message(struct message_bus *bus, struct message_envelope *envelope) {
   for (size_t i = 0; i < bus->listener_count; i++) {
     assert(bus->listeners[i] != NULL);
-    bus->listeners[i](data);
+    bus->listeners[i](envelope);
   }
 }
