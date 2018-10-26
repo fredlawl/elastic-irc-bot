@@ -197,6 +197,7 @@ static void __handle_command(struct irc_message_parser *parser, struct irc_messa
 
   command->parameter_count = 0;
   command->datetime_created = time(NULL);
+  memset(command->parameters, '\0', sizeof(struct irc_command_parameter *) * IRC_SPEC_MAX_COMMAND_PARAMETER_COUNT);
 
   while (true) {
     if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_SPACE)) {

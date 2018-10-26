@@ -62,5 +62,5 @@ target_link_libraries(elastic_irc_bot ${LIBRARIES} libelasticirc)
 add_executable(${BINARY_NAME}_test test/main.c)
 target_link_libraries(${BINARY_NAME}_test ${TEST_LIBRARIES} libelasticirc)
 
-add_executable(escape_str_test test/escape_str.c)
-target_link_libraries(escape_str_test ${TEST_LIBRARIES})
+add_executable(str_helpers_test test/str_helpers_test.c)
+target_link_libraries(str_helpers_test ${TEST_LIBRARIES})

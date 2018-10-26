@@ -4,25 +4,9 @@
 
 #include "elastic_search.h"
 #include "irc_message.h"
+#include "str_helpers.h"
 
 #define MAX_URL_BUFF 250
-
-//void escape_str(char *dest, char *src)
-//{
-//  *dest = 0;
-//  while(*src)
-//  {
-//    switch(*src)
-//    {
-//      case '\n' : strcat(dest++, "\\n"); break;
-//      case '\"' : strcat(dest++, "\\\""); break;
-//      default:  *dest = *src;
-//    }
-//    *src++;
-//    *dest++;
-//    *dest = 0;
-//  }
-//}
 
 struct elastic_search {
   char *index_name;
@@ -49,8 +33,8 @@ struct elastic_search *allocate_elastic_search(char *index_name, char *document_
     return NULL;
   }
 
-  search->index_name = (char *) malloc(sizeof(char) * strlen(index_name));
-  search->document_name = (char *) malloc(sizeof(char) * strlen(document_name));
+  search->index_name = (char *) calloc(strlen(index_name), sizeof(char));
+  search->document_name = (char *) calloc(strlen(document_name), sizeof(char));
 
   if (search->index_name == NULL || search->document_name == NULL) {
     free(search->index_name);
@@ -77,7 +61,7 @@ struct elastic_search_connection *elastic_search_connect(struct elastic_search *
     return NULL;
 
   con->base_url_len = strlen(url);
-  con->base_url = (char *) malloc(sizeof(char) * con->base_url_len);
+  con->base_url = (char *) calloc(con->base_url_len, sizeof(char));
   con->search = search;
 
   if (con->base_url == NULL) {
@@ -95,7 +79,7 @@ struct elastic_search_connection *elastic_search_connect(struct elastic_search *
   }
 
 #ifdef DEBUG
-  memset(con->curl_error_buffer, '\0', CURL_ERROR_SIZE);
+  memset(con->curl_error_buffer, '\0', sizeof(char) * CURL_ERROR_SIZE);
 #endif
 
   curl_easy_setopt(con->curl, CURLOPT_FOLLOWLOCATION, 1L);
@@ -117,11 +101,6 @@ struct elastic_search_connection *elastic_search_connect(struct elastic_search *
 }
 
 bool elastic_search_disconnect(struct elastic_search_connection *connection) {
-
-  if (connection->curl == NULL) {
-    return false;
-  }
-
   curl_easy_cleanup(connection->curl);
   free(connection->base_url);
   free(connection);
@@ -129,39 +108,49 @@ bool elastic_search_disconnect(struct elastic_search_connection *connection) {
   return true;
 }
 
-bool elastic_search_insert(struct elastic_search_connection *connection, struct irc_message *msg)
-{
-  char *url;
-  char *time_as_string;
-  char *payload;
-  struct curl_slist *headers = NULL;
+bool elastic_search_insert(struct elastic_search_connection *connection, struct irc_message *msg) {
   size_t buffer_length;
 
-  if (connection->curl == NULL)
-    return false;
-
+  bool succeeded = true;
+  char *url = NULL;
+  char time_as_string[26];
+  char *payload = NULL;
+  char *username = NULL;
+  char *channel = NULL;
+  char *message = NULL;
+  struct curl_slist *headers = NULL;
+  struct tm *pt;
 
   char *format = "{"
                     "\"username\": \"%s\","
                     "\"message\": \"%s\","
                     "\"datetime_created\": \"%s\","
                     "\"channel\": \"%s\""
-                  "}";
-
-  time_as_string = asctime(gmtime(&msg->command->datetime_created));
-  time_as_string[strlen(time_as_string) - 1] = '\0';
-
-  buffer_length = strlen(format) + strlen(time_as_string) + msg->prefix->length +  msg->command->parameters[0]->length + msg->command->parameters[1]->length;
-
-  payload = (char *) calloc(sizeof(char), buffer_length);
-
-  if (payload == NULL)
-    return false;
-
-  snprintf(payload, buffer_length, format, msg->prefix->value, msg->command->parameters[1]->value, time_as_string, msg->command->parameters[0]->value);
+                 "}";
 
   url = __append_index_document(connection, connection->search->index_name, connection->search->document_name, NULL);
   headers = curl_slist_append(headers, "Content-Type: application/json");
+
+  pt = localtime(&msg->command->datetime_created);
+  strftime(time_as_string, 26, "%Y-%m-%dT%H:%M:%S", pt);
+
+  buffer_length = strlen(format) +
+      26 +
+      sanitize_str(msg->prefix->value, &username) +
+      sanitize_str(msg->command->parameters[1]->value, &message) +
+      sanitize_str(msg->command->parameters[0]->value, &channel);
+
+  payload = (char *) calloc(sizeof(char), buffer_length);
+  if (payload == NULL) {
+    succeeded = false;
+    goto cleanup;
+  }
+
+  snprintf(payload, buffer_length, format,
+      username,
+      message,
+      time_as_string,
+      channel);
 
   curl_easy_setopt(connection->curl, CURLOPT_URL, url);
   curl_easy_setopt(connection->curl, CURLOPT_CUSTOMREQUEST, "POST");
@@ -174,23 +163,24 @@ bool elastic_search_insert(struct elastic_search_connection *connection, struct 
 #ifdef DEBUG
     fprintf(stderr, "Error with curl\n%s\n", connection->curl_error_buffer);
 #endif
-    curl_slist_free_all(headers);
-    free(url);
-    return false;
   }
 
-  curl_slist_free_all(headers);
-  free(url);
+cleanup:
 
-  return true;
+  curl_slist_free_all(headers);
+  free(payload);
+  free(url);
+  free(username);
+  free(channel);
+  free(message);
+
+  return succeeded;
 }
 
 static char * __append_index_document(struct elastic_search_connection *connection, char *index, char *document, char *additional) {
-  char buffer[MAX_URL_BUFF];
-  size_t total_url_len;
-  char *built_url;
-
-  memset(buffer, '\0', MAX_URL_BUFF);
+  char *buffer = (char *) calloc(MAX_URL_BUFF, sizeof(char));
+  if (buffer == NULL)
+    return NULL;
 
   strcat(buffer, connection->base_url);
   strcat(buffer, "/");
@@ -206,12 +196,7 @@ static char * __append_index_document(struct elastic_search_connection *connecti
     strcat(buffer, additional);
   }
 
-  total_url_len = strlen(buffer);
-  built_url = (char *) malloc(sizeof(char) * total_url_len);
-
-  strncpy(built_url, buffer, total_url_len);
-
-  return built_url;
+  return buffer;
 }
 
 static size_t __curl_write(char *buffer, size_t size, size_t nmemb, void *userdata) {

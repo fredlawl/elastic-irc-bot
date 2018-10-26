@@ -268,7 +268,7 @@ void write_irc_message_to_elastic_search_listener(struct message_envelope *envel
     printf("%s ", msg->command->parameters[i]->value);
   }
 
-//  elastic_search_insert(elastic_connection, msg);
+  elastic_search_insert(elastic_connection, msg);
 
   printf("\n");
 }
