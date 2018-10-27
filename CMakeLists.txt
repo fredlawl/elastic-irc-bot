@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.5)
 
 set(BINARY_NAME elastic_irc_bot)
 set(CMAKE_C_STANDARD 99)
