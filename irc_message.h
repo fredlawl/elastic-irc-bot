@@ -2,7 +2,7 @@
 #ifndef ELASTIC_IRC_BOT_IRC_MESSAGE_H
 #define ELASTIC_IRC_BOT_IRC_MESSAGE_H
 
-#include <unistd.h>
+#include <stdint.h>
 #include <time.h>
 #include <stdbool.h>
 #include <stdlib.h>

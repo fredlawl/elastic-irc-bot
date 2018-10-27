@@ -2,8 +2,6 @@
 #ifndef ELASTIC_IRC_BOT_MESSAGE_BUS_H
 #define ELASTIC_IRC_BOT_MESSAGE_BUS_H
 
-#include <unistd.h>
-
 struct message_bus;
 
 struct message_envelope {
