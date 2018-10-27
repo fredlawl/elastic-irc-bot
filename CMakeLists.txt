@@ -16,7 +16,7 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
 endif()
 
 
-find_path(PTHREADS_INCLUDE_DIR NAMES libpthread threads pthread pthreads)
+find_path(PTHREADS_INCLUDE_DIR NAMES pthread.h)
 find_library(PTHREADS_LIBRARY NAMES libpthread threads pthread pthreads REQUIRED)
 if (PTHREADS_LIBRARY)
 	include_directories(${PTHREADS_INCLUDE_DIR})

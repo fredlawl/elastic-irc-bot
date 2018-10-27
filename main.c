@@ -7,7 +7,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <stdlib.h>
-#include <pthread/pthread.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <signal.h>
 #include <sts_queue/sts_queue.h>
