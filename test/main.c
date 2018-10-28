@@ -28,7 +28,7 @@ void teardown(void) {
 Test(irc_lexer, given_eol_eol_token_returns, .init = setup, .fini = teardown, .exit_code = EXIT_SUCCESS) {
   struct irc_token *tok;
   char *input_buffer = "\r\n";
-  char *input = (char *) malloc(sizeof(char) * strlen(input_buffer));
+  char *input = (char *) calloc(strlen(input_buffer) + 1, sizeof(char));
   strcpy(input, input_buffer);
 
 
@@ -186,7 +186,7 @@ Test(irc_command_parsing, given_a_command_without_a_prefix_that_command_is_parse
     cr_assert(false);
 
   cr_assert(msg->prefix == NULL);
-  cr_assert_str_eq(msg->command->command.name.value, "HELP");
+  cr_assert_str_eq(msg->command->command.name.value, "HELP", "HELLO got %s expecting %s", msg->command->command.name.value, "HELP");
 
   deallocate_irc_message(msg);
 }
@@ -217,7 +217,7 @@ Test(irc_command_parsing, given_a_command_with_too_many_digits_terminate_bot, .i
 
 
 static struct irc_message *__get_message(char *line) {
-  char *input = (char *) malloc(sizeof(char) * strlen(line));
+  char *input = (char *) calloc(strlen(line) + 1, sizeof(char));
   strcpy(input, line);
 
   StsQueue.push(__line_buffer, input);

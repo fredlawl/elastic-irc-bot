@@ -169,15 +169,14 @@ static void __handle_prefix(struct irc_message_parser *parser, struct irc_messag
   }
 
   prefix = (struct irc_prefix *) malloc(sizeof(struct irc_prefix));
-  if (!prefix) {
+  if (prefix == NULL) {
     fprintf(stderr, "Unable to allocate prefix.\n");
     exit(EXIT_FAILURE);
   }
 
-  prefix->length = prefix_len + 1;
-  prefix->value = (char *) malloc(sizeof(char) * prefix->length);
+  prefix->length = prefix_len;
+  prefix->value = (char *) calloc(prefix->length + 1, sizeof(char));
   strncpy(prefix->value, irc_lexer_get_current_line(parser->lexer) + 1, prefix_len);
-  prefix->value[prefix_len] = '\0';
 
   message->prefix = prefix;
 
@@ -247,12 +246,11 @@ static void __handle_command(struct irc_message_parser *parser, struct irc_messa
 
   if (cmd_parser_substate == IRC_PARSER_SUBSTATE_NAME) {
     command->command.name.length = cmd_length;
-    command->command.name.value = (char *) malloc(sizeof(char) * cmd_length);
+    command->command.name.value = (char *) calloc(cmd_length + 1, sizeof(char));
 
     char *line = irc_lexer_get_current_line(parser->lexer);
-    size_t prefix_len = (message->prefix == NULL) ? 0 : message->prefix->length + 1;
+    size_t prefix_len = (message->prefix == NULL) ? 0 : message->prefix->length + 2;
     strncpy(command->command.name.value, line + prefix_len, cmd_length);
-    command->command.name.value[cmd_length] = '\0';
 
     command->command_type = IRC_CMD_NAME;
   }
@@ -306,11 +304,10 @@ static void __handle_parameter(struct irc_message_parser *parser, struct irc_mes
           irc_token_is_token_type(parser->current_token, IRC_TOKEN_EOL)) {
 
         param = (struct irc_command_parameter *) malloc(sizeof(struct irc_command_parameter));
-        param_string = (char *) malloc(sizeof(char) * param_character_counter);
+        param_string = (char *) calloc(param_character_counter + 1, sizeof(char));
 
         line_offset = (line_offset + message->command->parameter_count);
         strncpy(param_string, line + line_offset - param_character_counter - 1, param_character_counter);
-        param_string[param_character_counter] = '\0';
 
         param->length = param_character_counter;
         param->value = param_string;

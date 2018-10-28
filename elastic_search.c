@@ -33,8 +33,8 @@ struct elastic_search *allocate_elastic_search(char *index_name, char *document_
     return NULL;
   }
 
-  search->index_name = (char *) calloc(strlen(index_name), sizeof(char));
-  search->document_name = (char *) calloc(strlen(document_name), sizeof(char));
+  search->index_name = (char *) calloc(strlen(index_name) + 1, sizeof(char));
+  search->document_name = (char *) calloc(strlen(document_name) + 1, sizeof(char));
 
   if (search->index_name == NULL || search->document_name == NULL) {
     free(search->index_name);
@@ -61,7 +61,7 @@ struct elastic_search_connection *elastic_search_connect(struct elastic_search *
     return NULL;
 
   con->base_url_len = strlen(url);
-  con->base_url = (char *) calloc(con->base_url_len, sizeof(char));
+  con->base_url = (char *) calloc(con->base_url_len + 1, sizeof(char));
   con->search = search;
 
   if (con->base_url == NULL) {
@@ -140,7 +140,7 @@ bool elastic_search_insert(struct elastic_search_connection *connection, struct 
       sanitize_str(msg->command->parameters[1]->value, &message) +
       sanitize_str(msg->command->parameters[0]->value, &channel);
 
-  payload = (char *) calloc(sizeof(char), buffer_length);
+  payload = (char *) calloc(buffer_length + 1, sizeof(char));
   if (payload == NULL) {
     succeeded = false;
     goto cleanup;

@@ -123,7 +123,7 @@ struct irc_token *irc_lexer_get_next_token(struct irc_lexer *lexer) {
 }
 
 char *irc_lexer_get_current_line(struct irc_lexer *lexer) {
-  char *dest = (char *) malloc(sizeof(char) * lexer->current_line_length);
+  char *dest = (char *) calloc(lexer->current_line_length + 1, sizeof(char));
   strncpy(dest, lexer->current_line, lexer->current_line_length);
   return dest;
 }
@@ -140,7 +140,7 @@ struct irc_token *irc_lexer_peek_next_token(struct irc_lexer *lexer) {
   current_column = lexer->current_column;
   current_character = lexer->current_character;
 
-  current_line = (char *) malloc(sizeof(char) * lexer->current_line_length);
+  current_line = (char *) calloc(lexer->current_line_length + 1, sizeof(char));
   strncpy(current_line, lexer->current_line, lexer->current_line_length);
 
   // get next token

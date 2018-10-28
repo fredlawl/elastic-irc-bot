@@ -142,7 +142,7 @@ int main() {
     struct message_envelope* envelope;
     struct irc_message *msg;
 
-    if ((envelope = (struct message_envelope*)malloc(sizeof(struct message_envelope))) == NULL) {
+    if ((envelope = (struct message_envelope*) malloc(sizeof(struct message_envelope))) == NULL) {
       continue;
     }
 
@@ -193,7 +193,7 @@ void *irc_read_buffer_thread(void *thread_args) {
   char *output_buffer;
 
   output_character_position = 0;
-  output_buffer = (char *) malloc(sizeof(char) * (IRC_BUF_LENGTH - 1));
+  output_buffer = (char *) calloc(IRC_BUF_LENGTH, sizeof(char));
 
   while ((num_bytes_read = read(socket_descriptor, socket_read_buffer, (IRC_BUF_LENGTH << 1) - 1)) > 0) {
     for (i = 0; i < num_bytes_read; i++) {
@@ -213,7 +213,7 @@ void *irc_read_buffer_thread(void *thread_args) {
         StsQueue.push(args->queue, output_buffer);
 
         output_buffer = NULL;
-        output_buffer = (char *) malloc(sizeof(char) * (IRC_BUF_LENGTH - 1));
+        output_buffer = (char *) calloc(IRC_BUF_LENGTH, sizeof(char));
 
         output_character_position = 0;
         continue;

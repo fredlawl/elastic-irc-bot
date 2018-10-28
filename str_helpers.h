@@ -14,7 +14,7 @@ size_t sanitize_str(char *in, char **out) {
 
   while (*buf_pass) {
 
-    if ((((int) *buf_pass >= 0x01 && (int) *buf_pass <= 0x1F) || (int) *buf_pass == 0x7F)) {
+    if ((((int) *buf_pass >= 0x00 && (int) *buf_pass <= 0x1F) || (int) *buf_pass == 0x7F)) {
       buf_pass++;
       continue;
     }
@@ -29,7 +29,7 @@ size_t sanitize_str(char *in, char **out) {
   if (string_len == 0)
     return 0;
 
-  *out = (char *) calloc(string_len, sizeof(char));
+  *out = (char *) calloc(string_len + 1, sizeof(char));
   writep = *out;
 
   if (*out == NULL)
@@ -37,7 +37,7 @@ size_t sanitize_str(char *in, char **out) {
 
   while (*copy_pass) {
 
-    if (((int) *copy_pass >= 0x01 && (int) *copy_pass <= 0x1F) || (int) *copy_pass == 0x7F) {
+    if (((int) *copy_pass >= 0x00 && (int) *copy_pass <= 0x1F) || (int) *copy_pass == 0x7F) {
       copy_pass++;
       continue;
     }
