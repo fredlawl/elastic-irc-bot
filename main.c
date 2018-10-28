@@ -147,7 +147,7 @@ int main() {
     }
 
     msg = irc_message_parser_parse(parser);
-    if (msg != NULL && msg->command != NULL) {
+    if (msg != NULL) {
       envelope->message_type = MESSAGE_BUS_TYPE_IRC_MSG;
       envelope->data =  (void *) msg;
 

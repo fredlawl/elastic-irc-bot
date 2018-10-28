@@ -124,6 +124,8 @@ struct irc_token *irc_lexer_get_next_token(struct irc_lexer *lexer) {
 
 char *irc_lexer_get_current_line(struct irc_lexer *lexer) {
   char *dest = (char *) calloc(lexer->current_line_length + 1, sizeof(char));
+  if (dest == NULL)
+    return NULL;
   strncpy(dest, lexer->current_line, lexer->current_line_length);
   return dest;
 }

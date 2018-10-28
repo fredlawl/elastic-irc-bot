@@ -79,6 +79,7 @@ struct irc_message *irc_message_parser_parse(struct irc_message_parser *parser) 
     return NULL;
 
   if (irc_token_is_token_type(parser->current_token, IRC_TOKEN_EOF)) {
+    free(msg);
     __eat_token(parser, IRC_TOKEN_EOF);
     return NULL;
   }
@@ -147,6 +148,7 @@ static void __eat_token(struct irc_message_parser *parser, enum irc_token_type e
 
 static void __handle_prefix(struct irc_message_parser *parser, struct irc_message *message) {
   size_t prefix_len;
+  char *current_line = NULL;
   struct irc_prefix *prefix;
 
   if (!irc_token_is_token_type(parser->current_token, IRC_TOKEN_COLON)) {
@@ -176,10 +178,18 @@ static void __handle_prefix(struct irc_message_parser *parser, struct irc_messag
 
   prefix->length = prefix_len;
   prefix->value = (char *) calloc(prefix->length + 1, sizeof(char));
-  strncpy(prefix->value, irc_lexer_get_current_line(parser->lexer) + 1, prefix_len);
+  current_line = irc_lexer_get_current_line(parser->lexer);
+
+  if (prefix->value == NULL || current_line == NULL) {
+    goto done;
+  }
+
+  strncpy(prefix->value, current_line + 1, prefix_len);
 
   message->prefix = prefix;
 
+done:
+  free(current_line);
   parser->state = IRC_PARSER_STATE_COMMAND;
 }
 
@@ -251,6 +261,7 @@ static void __handle_command(struct irc_message_parser *parser, struct irc_messa
     char *line = irc_lexer_get_current_line(parser->lexer);
     size_t prefix_len = (message->prefix == NULL) ? 0 : message->prefix->length + 2;
     strncpy(command->command.name.value, line + prefix_len, cmd_length);
+    free(line);
 
     command->command_type = IRC_CMD_NAME;
   }
@@ -331,6 +342,7 @@ static void __handle_parameter(struct irc_message_parser *parser, struct irc_mes
     }
   }
 
+  free(line);
   parser->state = IRC_PARSER_STATE_DONE;
 }
 

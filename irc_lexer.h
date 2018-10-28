@@ -2,6 +2,8 @@
 #ifndef ELASTIC_IRC_BOT_IRC_LEXER_H
 #define ELASTIC_IRC_BOT_IRC_LEXER_H
 
+#include <stddef.h>
+
 #include "irc_token.h"
 
 struct irc_lexer;
