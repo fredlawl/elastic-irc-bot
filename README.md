@@ -1,6 +1,6 @@
 # Elastic IRC Bot
 
-### Dependencies
+### Build Dependencies
 
 **Release**
 1. pthreads
@@ -26,8 +26,20 @@ or
 
 Binaries can be found in `./bin`
 
-### Elasticsearch Index
+#### Elasticsearch Index
+Run the following command to establish the index with Elasticsearch. The
+program does not currently stray away from this mapping. The index is
+named **elastic_irc_bot** and the document is named **privmsg**.
+
+```
+curl -X PUT -H "Content-Type: application/json" -d '{"settings": {"index": {"number_of_shards": "5", "number_of_replicas": "1"} }, "mappings": {"privmsg": {"properties": {"username": {"type": "keyword"}, "message": {"type": "text"}, "datetime_created": {"type": "date", "format": "strict_date_hour_minute_second"}, "channel": {"type": "keyword"} } } } }' http://localhost:9200/elastic_irc_bot
+```
+
+Calling: `curl -X GET http://localhost:9200/_cat/indices` should show that
+the index was correctly created.
+
+#### Configure Bot for IRC
 TODO
 
-### Configure Bot for IRC
-TODO
+## [License](./LICENSE)
+
