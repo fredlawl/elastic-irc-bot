@@ -66,7 +66,7 @@ int main() {
     return EXIT_FAILURE;
   }
 
-  elastic_connection = elastic_search_connect(elasticsearch, "http://localhost:9200");
+  elastic_connection = elastic_search_connect(elasticsearch, ELASTICSEARCH_BASE_URL);
   if (elastic_connection == NULL) {
     deallocate_elastic_search(elasticsearch);
     // todo: Let users know in stderr that connetion to elasticsearch didn't work

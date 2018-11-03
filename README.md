@@ -49,6 +49,7 @@ the index was correctly created.
 #define IRC_USER_PASS "somepassword"
 #define IRC_USER_NICK "elasticirc"
 #define IRC_USER_REALNAME "Elastic IRC Bot"
+#define ELASTICSEARCH_BASE_URL "http://localhost:9200"
 ```
 
 Replace these with your own settings.

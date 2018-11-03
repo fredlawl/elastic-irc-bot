@@ -23,4 +23,8 @@
 // User realname
 #define IRC_USER_REALNAME "Elastic IRC Bot"
 
+// URL to access your instance of Elasticsearch
+// This is the default setting from a fresh install of Elasticsearch
+#define ELASTICSEARCH_BASE_URL "http://localhost:9200"
+
 #endif
