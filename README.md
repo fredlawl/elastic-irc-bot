@@ -13,13 +13,37 @@
 
 ### Install
 
+#### Configure Bot for IRC
+**settings.h** contains the following default settings:
+
+```
+#define IRC_SERVER_IP "38.229.70.22"
+#define IRC_SERVER_PORT 6667
+#define IRC_CHANNEL "#flawlztest"
+#define IRC_USER_SERVER_IP "127.0.0.1"
+#define IRC_USER_PASS "somepassword"
+#define IRC_USER_NICK "elasticirc"
+#define IRC_USER_REALNAME "Elastic IRC Bot"
+#define ELASTICSEARCH_BASE_URL "http://localhost:9200"
+```
+
+Replace these with your own settings.
+
+**NOTE:** Each time **settings.h** is modified, the source must be
+recompiled.
+
+#### Compile
 Under Linux, for production, I recommend running the application under a
 specially created user to isolate the application from the rest of the system.
+
+Run the following commands to compile the project.
 
 `git submodule update --init --recursive`
 
 `cmake CMakeLists.txt` (for Release)
+
 or
+
 `cmake -D CMAKE_BUILD_TYPE=Debug CMakeLists.txt` (for Debug)
 
 `make`
@@ -38,21 +62,4 @@ curl -X PUT -H "Content-Type: application/json" -d '{"settings": {"index": {"num
 Calling: `curl -X GET http://localhost:9200/_cat/indices` should show that
 the index was correctly created.
 
-#### Configure Bot for IRC
-**settings.h** contains the following default settings:
-
-```
-#define IRC_SERVER_IP "38.229.70.22"
-#define IRC_SERVER_PORT 6667
-#define IRC_CHANNEL "#flawlztest"
-#define IRC_USER_SERVER_IP "127.0.0.1"
-#define IRC_USER_PASS "somepassword"
-#define IRC_USER_NICK "elasticirc"
-#define IRC_USER_REALNAME "Elastic IRC Bot"
-#define ELASTICSEARCH_BASE_URL "http://localhost:9200"
-```
-
-Replace these with your own settings.
-
 ## [License](./LICENSE)
-
