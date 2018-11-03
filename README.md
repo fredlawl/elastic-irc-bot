@@ -39,7 +39,19 @@ Calling: `curl -X GET http://localhost:9200/_cat/indices` should show that
 the index was correctly created.
 
 #### Configure Bot for IRC
-TODO
+**settings.h** contains the following default settings:
+
+```
+#define IRC_SERVER_IP "38.229.70.22"
+#define IRC_SERVER_PORT 6667
+#define IRC_CHANNEL "#flawlztest"
+#define IRC_USER_SERVER_IP "127.0.0.1"
+#define IRC_USER_PASS "somepassword"
+#define IRC_USER_NICK "elasticirc"
+#define IRC_USER_REALNAME "Elastic IRC Bot"
+```
+
+Replace these with your own settings.
 
 ## [License](./LICENSE)
 
