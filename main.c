@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -20,12 +19,7 @@
 #include "message_bus.h"
 #include "elastic_search.h"
 
-#define SERVER_IP "38.229.70.22"
-#define SERVER_PORT 6667
-#define IRC_PASS "PASS secretpass\r\n"
-#define IRC_NICK "NICK cezizle\r\n"
-#define IRC_CONNECT "USER cezizle 127.0.0.1 chat.freenode.net :Yip yop\r\n"
-#define IRC_CHANNEL "JOIN #flawlztest\r\n"
+#include "settings.h"
 
 #define MESSAGE_BUS_TYPE_IRC_MSG 1
 
@@ -83,10 +77,10 @@ int main() {
   message_bus_bind_listener(main_message_bus, &irc_ping_pong_listener);
 
   char *cmds[] = {
-      IRC_PASS,
-      IRC_NICK,
-      IRC_CONNECT,
-      IRC_CHANNEL
+      "PASS " IRC_USER_PASS "\r\n",
+      "NICK " IRC_USER_NICK "\r\n",
+      "USER " IRC_USER_NICK " " IRC_USER_SERVER_IP " " IRC_SERVER_IP " :" IRC_USER_REALNAME  "\r\n",
+      "JOIN " IRC_CHANNEL "\r\n"
   };
 
   signal(SIGKILL, &signal_termination_handler);
@@ -102,8 +96,8 @@ int main() {
   }
 
   socket_address.sin_family = AF_INET;
-  socket_address.sin_addr.s_addr = inet_addr(SERVER_IP);
-  socket_address.sin_port = htons(SERVER_PORT);
+  socket_address.sin_addr.s_addr = inet_addr(IRC_SERVER_IP);
+  socket_address.sin_port = htons(IRC_SERVER_PORT);
 
   socket_descriptor = socket(PF_INET, SOCK_STREAM, 0);
 
@@ -112,8 +106,8 @@ int main() {
     return EXIT_FAILURE;
   }
 
-  if (inet_pton(AF_INET, SERVER_IP, &socket_address.sin_addr) <= 0) {
-    fprintf(stderr, "%s Is an invalid IP address.\n", SERVER_IP);
+  if (inet_pton(AF_INET, IRC_SERVER_IP, &socket_address.sin_addr) <= 0) {
+    fprintf(stderr, "%s Is an invalid IP address.\n", IRC_SERVER_IP);
     return EXIT_FAILURE;
   }
 
@@ -287,6 +281,6 @@ void irc_ping_pong_listener(struct message_envelope *envelope)
 
   if (irc_command_is_type(msg->command, IRC_CMD_NAME) && strcasecmp("PING", msg->command->command.name.value) == 0) {
     printf("\nPONG\n");
-    send(socket_descriptor, "PONG chat.freenode.net\r\n", 26, 0);
+    send(socket_descriptor, "PONG " IRC_SERVER_IP "\r\n", 26, 0);
   }
 }
