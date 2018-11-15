@@ -2,8 +2,8 @@
 #ifndef ELASTIC_IRC_BOT_IRC_TOKEN_H
 #define ELASTIC_IRC_BOT_IRC_TOKEN_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 struct irc_token;
 
