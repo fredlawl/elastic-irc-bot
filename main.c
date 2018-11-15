@@ -229,9 +229,9 @@ void *irc_read_buffer_thread(void *thread_args) {
 }
 
 void signal_termination_handler(int signal_num) {
+  printf("Sending: QUIT\n");
   send(socket_descriptor, "QUIT\r\n", 7, 0);
   shutdown(socket_descriptor, SHUT_RDWR);
-  printf("Sent quit cmd\n");
 }
 
 void log_irc_server_privmsg(struct message_envelope *envelope)
@@ -243,13 +243,10 @@ void log_irc_server_privmsg(struct message_envelope *envelope)
 
   msg = (struct irc_message*) envelope->data;
 
-  if (!irc_command_is_type(msg->command, IRC_CMD_NAME) || strcasecmp("PRIVMSG", msg->command->command.name.value) != 0) {
+  if (!irc_command_name_is(msg->command, "PRIVMSG"))
     return;
-  }
 
   elastic_search_insert(elastic_connection, msg);
-
-  printf("\n");
 }
 
 void pong_irc_server(struct message_envelope *envelope)
@@ -261,10 +258,11 @@ void pong_irc_server(struct message_envelope *envelope)
 
   msg = (struct irc_message*) envelope->data;
 
-  if (irc_command_is_type(msg->command, IRC_CMD_NAME) && strcasecmp("PING", msg->command->command.name.value) == 0) {
-    printf("\nPONG\n");
-    send(socket_descriptor, "PONG " IRC_SERVER_IP "\r\n", 26, 0);
-  }
+  if (!irc_command_name_is(msg->command, "PING"))
+    return;
+
+  printf("Sending: PONG\n");
+  send(socket_descriptor, "PONG " IRC_SERVER_IP "\r\n", 26, 0);
 }
 
 void log_irc_server_errors(struct message_envelope *envelope)
@@ -276,7 +274,7 @@ void log_irc_server_errors(struct message_envelope *envelope)
 
   msg = (struct irc_message*) envelope->data;
 
-  if (!irc_command_is_type(msg->command, IRC_CMD_NAME) || strcasecmp("ERROR", msg->command->command.name.value) != 0) {
+  if (!irc_command_name_is(msg->command, "ERROR")) {
     return;
   }
 
@@ -292,9 +290,8 @@ void log_irc_server_info(struct message_envelope *envelope)
 
   msg = (struct irc_message*) envelope->data;
 
-  if (!irc_command_is_type(msg->command, IRC_CMD_NAME) ||
-      strcasecmp("ERROR", msg->command->command.name.value) == 0 ||
-      strcasecmp("PRIVMSG", msg->command->command.name.value) == 0) {
+  if (irc_command_name_is(msg->command, "ERROR") ||
+      irc_command_name_is(msg->command, "PRIVMSG")) {
     return;
   }
 

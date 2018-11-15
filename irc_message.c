@@ -2,6 +2,16 @@
 
 #include "irc_message.h"
 
+bool irc_command_name_is(struct irc_command *cmd, char *name)
+{
+  return (irc_command_is_type(cmd, IRC_CMD_NAME) && strcasecmp(name, cmd->command.name.value) == 0);
+}
+
+bool irc_command_code_is(struct irc_command *cmd, int code)
+{
+  return (irc_command_is_type(cmd, IRC_CMD_CODE) && cmd->command.code == code);
+}
+
 void irc_message_pretty_print(struct irc_message *msg, FILE *descriptor)
 {
   char *time_as_string;

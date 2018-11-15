@@ -49,6 +49,10 @@ static bool irc_command_is_type(struct irc_command *cmd, enum irc_command_type t
   return cmd->command_type == type;
 }
 
+bool irc_command_name_is(struct irc_command *cmd, char *name);
+
+bool irc_command_code_is(struct irc_command *cmd, int code);
+
 void irc_message_pretty_print(struct irc_message *msg, FILE *descriptor);
 
 #endif
