@@ -17,7 +17,7 @@ struct message_bus *allocate_message_bus(size_t max_listeners) {
     return NULL;
   }
 
-  bus->listeners = (message_bus_listener_t *) malloc(sizeof(message_bus_listener_t) * max_listeners);
+  bus->listeners = (message_bus_listener_t *) calloc(max_listeners, sizeof(message_bus_listener_t));
   if (bus->listeners == NULL) {
     assert(bus->listeners != NULL);
     free(bus);
