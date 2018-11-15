@@ -55,7 +55,7 @@ add_library(libelasticirc STATIC
 		irc_lexer.c
 		irc_message_parser.c
 		message_bus.c
-		elastic_search.c)
+		elastic_search.c irc_message.c)
 
 add_executable(${BINARY_NAME} main.c)
 target_link_libraries(elastic_irc_bot ${LIBRARIES} libelasticirc)

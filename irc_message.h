@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <stdbool.h>
-#include <stdlib.h>
+#include <stdio.h>
 
 #include "irc_spec.h"
 
@@ -44,8 +44,11 @@ struct irc_message {
 };
 
 inline
-static bool irc_command_is_type(struct irc_command *cmd, enum irc_command_type type) {
+static bool irc_command_is_type(struct irc_command *cmd, enum irc_command_type type)
+{
   return cmd->command_type == type;
 }
+
+void irc_message_pretty_print(struct irc_message *msg, FILE *descriptor);
 
 #endif

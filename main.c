@@ -29,8 +29,10 @@ static volatile bool irc_read_thread_stopped = false;
 static struct elastic_search* elasticsearch;
 static struct elastic_search_connection* elastic_connection;
 
-void write_irc_message_to_elastic_search_listener(struct message_envelope *envelope);
-void irc_ping_pong_listener(struct message_envelope *envelope);
+void log_irc_server_privmsg(struct message_envelope *envelope);
+void pong_irc_server(struct message_envelope *envelope);
+void log_irc_server_errors(struct message_envelope *envelope);
+void log_irc_server_info(struct message_envelope *envelope);
 
 struct irc_read_buffer_args {
   StsHeader *queue;
@@ -73,8 +75,10 @@ int main() {
     return EXIT_FAILURE;
   }
 
-  message_bus_bind_listener(main_message_bus, &write_irc_message_to_elastic_search_listener);
-  message_bus_bind_listener(main_message_bus, &irc_ping_pong_listener);
+  message_bus_bind_listener(main_message_bus, &log_irc_server_privmsg);
+  message_bus_bind_listener(main_message_bus, &pong_irc_server);
+  message_bus_bind_listener(main_message_bus, &log_irc_server_errors);
+  message_bus_bind_listener(main_message_bus, &log_irc_server_info);
 
   char *cmds[] = {
       "PASS " IRC_USER_PASS "\r\n",
@@ -126,7 +130,7 @@ int main() {
   cmds_array_len = sizeof(cmds) / sizeof(char *);
 
   for (size_t i = 0; i < cmds_array_len; i++) {
-    printf("Sending: %s\n", cmds[i]);
+    printf("Sending: %s", cmds[i]);
     send(socket_descriptor, cmds[i], strlen(cmds[i]), 0);
   }
 
@@ -230,10 +234,9 @@ void signal_termination_handler(int signal_num) {
   printf("Sent quit cmd\n");
 }
 
-void write_irc_message_to_elastic_search_listener(struct message_envelope *envelope)
+void log_irc_server_privmsg(struct message_envelope *envelope)
 {
   struct irc_message* msg;
-  char *time_as_string;
 
   if (envelope->message_type != MESSAGE_BUS_TYPE_IRC_MSG)
     return;
@@ -244,34 +247,12 @@ void write_irc_message_to_elastic_search_listener(struct message_envelope *envel
     return;
   }
 
-  time_as_string = asctime(gmtime(&msg->command->datetime_created));
-
-  time_as_string[strlen(time_as_string) - 1] = '\0';
-  printf("[%s] ", time_as_string);
-
-  if (msg->prefix != NULL) {
-    printf("%s -- ", msg->prefix->value);
-  }
-
-  if (msg->command->command_type == IRC_CMD_CODE) {
-    printf("%i", msg->command->command.code);
-  } else {
-    printf("%s", msg->command->command.name.value);
-  }
-
-  printf(" -- ");
-
-  for (uint8_t i = 0; i < msg->command->parameter_count; i++) {
-    printf("%s ", msg->command->parameters[i]->value);
-  }
-
   elastic_search_insert(elastic_connection, msg);
 
   printf("\n");
 }
 
-
-void irc_ping_pong_listener(struct message_envelope *envelope)
+void pong_irc_server(struct message_envelope *envelope)
 {
   struct irc_message* msg;
 
@@ -284,4 +265,38 @@ void irc_ping_pong_listener(struct message_envelope *envelope)
     printf("\nPONG\n");
     send(socket_descriptor, "PONG " IRC_SERVER_IP "\r\n", 26, 0);
   }
+}
+
+void log_irc_server_errors(struct message_envelope *envelope)
+{
+  struct irc_message* msg;
+
+  if (envelope->message_type != MESSAGE_BUS_TYPE_IRC_MSG)
+    return;
+
+  msg = (struct irc_message*) envelope->data;
+
+  if (!irc_command_is_type(msg->command, IRC_CMD_NAME) || strcasecmp("ERROR", msg->command->command.name.value) != 0) {
+    return;
+  }
+
+  irc_message_pretty_print(msg, stderr);
+}
+
+void log_irc_server_info(struct message_envelope *envelope)
+{
+  struct irc_message* msg;
+
+  if (envelope->message_type != MESSAGE_BUS_TYPE_IRC_MSG)
+    return;
+
+  msg = (struct irc_message*) envelope->data;
+
+  if (!irc_command_is_type(msg->command, IRC_CMD_NAME) ||
+      strcasecmp("ERROR", msg->command->command.name.value) == 0 ||
+      strcasecmp("PRIVMSG", msg->command->command.name.value) == 0) {
+    return;
+  }
+
+  irc_message_pretty_print(msg, stdout);
 }
