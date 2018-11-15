@@ -55,7 +55,9 @@ add_library(libelasticirc STATIC
 		irc_lexer.c
 		irc_message_parser.c
 		message_bus.c
-		elastic_search.c irc_message.c)
+		elastic_search.c
+		irc_message.c
+		str_helpers.c)
 
 add_executable(${BINARY_NAME} main.c)
 target_link_libraries(elastic_irc_bot ${LIBRARIES} libelasticirc)
@@ -64,6 +66,6 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
 	add_executable(${BINARY_NAME}_test test/main.c)
 	target_link_libraries(${BINARY_NAME}_test ${TEST_LIBRARIES} libelasticirc)
 
-	add_executable(str_helpers_test test/str_helpers_test.c)
+	add_executable(str_helpers_test test/str_helpers_test.c str_helpers.c)
 	target_link_libraries(str_helpers_test ${TEST_LIBRARIES})
 endif()
