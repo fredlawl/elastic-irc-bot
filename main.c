@@ -168,6 +168,7 @@ int main() {
     return EXIT_FAILURE;
   }
 
+  deallocate_message_bus(main_message_bus);
   elastic_search_disconnect(elastic_connection);
 
   curl_global_cleanup();
