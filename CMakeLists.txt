@@ -63,7 +63,7 @@ add_executable(${BINARY_NAME} main.c)
 target_link_libraries(elastic_irc_bot ${LIBRARIES} libelasticirc)
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
-	add_executable(${BINARY_NAME}_test test/main.c)
+	add_executable(${BINARY_NAME}_test test/irc_command_parsing_test.c)
 	target_link_libraries(${BINARY_NAME}_test ${TEST_LIBRARIES} libelasticirc)
 
 	add_executable(str_helpers_test test/str_helpers_test.c str_helpers.c)

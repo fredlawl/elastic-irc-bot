@@ -103,9 +103,7 @@ void deallocate_irc_message(struct irc_message *msg) {
 
 
   if (msg->command != NULL) {
-    if (irc_command_is_type(msg->command, IRC_CMD_NAME)) {
-      free(msg->command->command.name.value);
-    }
+    free(msg->command->command.value);
 
     for (i = 0; i < msg->command->parameter_count; i++) {
       free(msg->command->parameters[i]->value);
@@ -238,7 +236,6 @@ static void __handle_command(struct irc_message_parser *parser, struct irc_messa
 
   }
 
-
   if (cmd_parser_substate == IRC_PARSER_SUBSTATE_NONE) {
     free(command);
     goto advance_state;
@@ -249,22 +246,16 @@ static void __handle_command(struct irc_message_parser *parser, struct irc_messa
       fprintf(stderr, "Command must be 3 digits.\n");
       exit(EXIT_FAILURE);
     }
-
-    command->command.code = cmd_code;
-    command->command_type = IRC_CMD_CODE;
   }
 
-  if (cmd_parser_substate == IRC_PARSER_SUBSTATE_NAME) {
-    command->command.name.length = cmd_length;
-    command->command.name.value = (char *) calloc(cmd_length + 1, sizeof(char));
+  command->command.length = cmd_length;
+  command->command.value = (char *) calloc(cmd_length + 1, sizeof(char));
+  // todo: If calloc fails, do something
 
-    char *line = irc_lexer_get_current_line(parser->lexer);
-    size_t prefix_len = (message->prefix == NULL) ? 0 : message->prefix->length + 2;
-    strncpy(command->command.name.value, line + prefix_len, cmd_length);
-    free(line);
-
-    command->command_type = IRC_CMD_NAME;
-  }
+  char *line = irc_lexer_get_current_line(parser->lexer);
+  size_t prefix_len = (message->prefix == NULL) ? 0 : message->prefix->length + 2;
+  strncpy(command->command.value, line + prefix_len, cmd_length);
+  free(line);
 
   message->command = command;
 

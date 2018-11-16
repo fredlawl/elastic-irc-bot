@@ -45,7 +45,7 @@ Test(irc_command_parsing, given_a_command_command_parsed, .init = setup, .fini =
   if (msg == NULL)
     cr_assert(false);
 
-  cr_assert(strcasecmp(msg->command->command.name.value, "HELP") == 0);
+  cr_assert(strcasecmp(msg->command->command.value, "HELP") == 0);
 
   deallocate_irc_message(msg);
 }
@@ -186,24 +186,10 @@ Test(irc_command_parsing, given_a_command_without_a_prefix_that_command_is_parse
     cr_assert(false);
 
   cr_assert(msg->prefix == NULL);
-  cr_assert_str_eq(msg->command->command.name.value, "HELP", "HELLO got %s expecting %s", msg->command->command.name.value, "HELP");
+  cr_assert_str_eq(msg->command->command.value, "HELP", "HELLO got %s expecting %s", msg->command->command.value, "HELP");
 
   deallocate_irc_message(msg);
 }
-
-
-Test(irc_command_parsing, given_a_command_with_digits_integer_is_parsed, .init = setup, .fini = teardown, .exit_code = EXIT_SUCCESS) {
-  char *input_buffer = "101\r\n";
-  struct irc_message *msg = __get_message(input_buffer);
-
-  if (msg == NULL)
-    cr_assert(false);
-
-  cr_assert(msg->command->command.code == 101);
-
-  deallocate_irc_message(msg);
-}
-
 
 Test(irc_command_parsing, given_a_command_with_too_many_digits_terminate_bot, .init = setup, .fini = teardown, .exit_code = EXIT_FAILURE) {
   char *input_buffer = "1010\r\n";
@@ -211,6 +197,19 @@ Test(irc_command_parsing, given_a_command_with_too_many_digits_terminate_bot, .i
 
   if (msg == NULL)
     cr_assert(false);
+
+  deallocate_irc_message(msg);
+}
+
+Test(irc_command_parsing, given_a_command_of_digits_test_command_name_is_string, .init = setup, .fini = teardown, .exit_code = EXIT_SUCCESS) {
+  char *input_buffer = "101\r\n";
+  struct irc_message *msg = __get_message(input_buffer);
+
+  if (msg == NULL)
+    cr_assert(false, "Message is null");
+
+  cr_assert_str_eq(msg->command->command.value, "101", "%s != 101", msg->command->command.value);
+  cr_assert(msg->command->command.length == 3, "%lu != %d", msg->command->command.length, 3);
 
   deallocate_irc_message(msg);
 }
