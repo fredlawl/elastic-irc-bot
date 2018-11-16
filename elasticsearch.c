@@ -94,9 +94,6 @@ struct elasticsearch_connection *elasticsearch_connect(struct elasticsearch *sea
   curl_easy_setopt(con->curl, CURLOPT_VERBOSE, 1L);
 #endif
 
-  // TODO: Ping server first to see if it's up
-  // TODO: Setup error flags incase there's an error for clients to see what's going on
-
   return con;
 }
 
