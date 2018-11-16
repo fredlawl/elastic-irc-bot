@@ -131,7 +131,7 @@ int main() {
 
   for (size_t i = 0; i < cmds_array_len; i++) {
     printf("Sending: %s", cmds[i]);
-    send(socket_descriptor, cmds[i], strlen(cmds[i]), 0);
+    send(socket_descriptor, cmds[i], strlen(cmds[i]) * sizeof(char), 0);
   }
 
   parser = allocate_irc_message_parser(lexer);
@@ -165,7 +165,7 @@ int main() {
     }
   }
 
-  send(socket_descriptor, "QUIT\r\n", 7, 0);
+  send(socket_descriptor, "QUIT\r\n", 6 * sizeof(char), 0);
 
   if (pthread_join(pthread_irc_read_buffer, NULL)) {
     fprintf(stderr, "Error joining thread\n");
@@ -230,7 +230,7 @@ void *irc_read_buffer_thread(void *thread_args) {
 
 void signal_termination_handler(int signal_num) {
   printf("Sending: QUIT\n");
-  send(socket_descriptor, "QUIT\r\n", 7, 0);
+  send(socket_descriptor, "QUIT\r\n", 6 * sizeof(char), 0);
   shutdown(socket_descriptor, SHUT_RDWR);
 }
 
@@ -252,6 +252,7 @@ void log_irc_server_privmsg(struct message_envelope *envelope)
 void pong_irc_server(struct message_envelope *envelope)
 {
   struct irc_message* msg;
+  char *cmd = "PONG " IRC_SERVER_IP "\r\n";
 
   if (envelope->message_type != MESSAGE_BUS_TYPE_IRC_MSG)
     return;
@@ -262,7 +263,7 @@ void pong_irc_server(struct message_envelope *envelope)
     return;
 
   printf("Sending: PONG\n");
-  send(socket_descriptor, "PONG " IRC_SERVER_IP "\r\n", 26, 0);
+  send(socket_descriptor, cmd, strlen(cmd) * sizeof(char), 0);
 }
 
 void log_irc_server_errors(struct message_envelope *envelope)
