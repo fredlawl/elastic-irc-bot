@@ -55,7 +55,7 @@ add_library(libelasticirc STATIC
 		irc_lexer.c
 		irc_message_parser.c
 		message_bus.c
-		elastic_search.c
+		elasticsearch.c
 		irc_message.c
 		str_helpers.c)
 

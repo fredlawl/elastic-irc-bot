@@ -2,34 +2,34 @@
 #include <curl/curl.h>
 #include <string.h>
 
-#include "elastic_search.h"
+#include "elasticsearch.h"
 #include "irc_message.h"
 #include "str_helpers.h"
 
 #define MAX_URL_BUFF 250
 
-struct elastic_search {
+struct elasticsearch {
   char *index_name;
   char *document_name;
 };
 
-struct elastic_search_connection {
+struct elasticsearch_connection {
   size_t base_url_len;
   CURL *curl;
   char *base_url;
-  struct elastic_search *search;
+  struct elasticsearch *search;
 #ifdef DEBUG
   char curl_error_buffer[CURL_ERROR_SIZE];
 #endif
 };
 
-static char *__append_index_document(struct elastic_search_connection *connection, char *index, char *document, char *additional);
+static char *__append_index_document(struct elasticsearch_connection *connection, char *index, char *document, char *additional);
 static size_t __curl_write(char *buffer, size_t size, size_t nmemb, void *userdata);
 
-struct elastic_search *allocate_elastic_search(char *index_name, char *document_name) {
-  struct elastic_search *search;
+struct elasticsearch *allocate_elasticsearch(char *index_name, char *document_name) {
+  struct elasticsearch *search;
 
-  if ((search = (struct elastic_search *) malloc(sizeof(struct elastic_search))) == NULL) {
+  if ((search = (struct elasticsearch *) malloc(sizeof(struct elasticsearch))) == NULL) {
     return NULL;
   }
 
@@ -49,14 +49,14 @@ struct elastic_search *allocate_elastic_search(char *index_name, char *document_
   return search;
 }
 
-void deallocate_elastic_search(struct elastic_search *search) {
+void deallocate_elasticsearch(struct elasticsearch *search) {
   free(search);
 }
 
-struct elastic_search_connection *elastic_search_connect(struct elastic_search *search, char *url) {
-  struct elastic_search_connection *con;
+struct elasticsearch_connection *elasticsearch_connect(struct elasticsearch *search, char *url) {
+  struct elasticsearch_connection *con;
 
-  con = (struct elastic_search_connection *) malloc(sizeof(struct elastic_search_connection));
+  con = (struct elasticsearch_connection *) malloc(sizeof(struct elasticsearch_connection));
   if (con == NULL)
     return NULL;
 
@@ -100,7 +100,7 @@ struct elastic_search_connection *elastic_search_connect(struct elastic_search *
   return con;
 }
 
-bool elastic_search_disconnect(struct elastic_search_connection *connection) {
+bool elasticsearch_disconnect(struct elasticsearch_connection *connection) {
   curl_easy_cleanup(connection->curl);
   free(connection->base_url);
   free(connection);
@@ -108,7 +108,7 @@ bool elastic_search_disconnect(struct elastic_search_connection *connection) {
   return true;
 }
 
-bool elastic_search_insert(struct elastic_search_connection *connection, struct irc_message *msg) {
+bool elasticsearch_insert(struct elasticsearch_connection *connection, struct irc_message *msg) {
   size_t buffer_length;
 
   bool succeeded = true;
@@ -177,7 +177,7 @@ cleanup:
   return succeeded;
 }
 
-static char * __append_index_document(struct elastic_search_connection *connection, char *index, char *document, char *additional) {
+static char * __append_index_document(struct elasticsearch_connection *connection, char *index, char *document, char *additional) {
   char *buffer = (char *) calloc(MAX_URL_BUFF, sizeof(char));
   if (buffer == NULL)
     return NULL;

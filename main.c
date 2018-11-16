@@ -17,7 +17,7 @@
 #include "irc_message_parser.h"
 #include "irc_message.h"
 #include "message_bus.h"
-#include "elastic_search.h"
+#include "elasticsearch.h"
 
 #include "settings.h"
 
@@ -26,8 +26,8 @@
 static int socket_descriptor;
 static volatile bool irc_read_thread_stopped = false;
 
-static struct elastic_search* elasticsearch;
-static struct elastic_search_connection* elastic_connection;
+static struct elasticsearch* elasticsearch;
+static struct elasticsearch_connection* elastic_connection;
 
 void log_irc_server_privmsg(struct message_envelope *envelope);
 void pong_irc_server(struct message_envelope *envelope);
@@ -61,16 +61,15 @@ int main() {
     return EXIT_FAILURE;
   }
 
-  // todo: s/elastic_search/elasticsearch/
-  elasticsearch = allocate_elastic_search("elastic_irc_bot", "privmsg");
+  elasticsearch = allocate_elasticsearch("elastic_irc_bot", "privmsg");
   if (elasticsearch == NULL) {
     // todo: Let users know in stderr that connetion to elasticsearch didn't work
     return EXIT_FAILURE;
   }
 
-  elastic_connection = elastic_search_connect(elasticsearch, ELASTICSEARCH_BASE_URL);
+  elastic_connection = elasticsearch_connect(elasticsearch, ELASTICSEARCH_BASE_URL);
   if (elastic_connection == NULL) {
-    deallocate_elastic_search(elasticsearch);
+    deallocate_elasticsearch(elasticsearch);
     // todo: Let users know in stderr that connetion to elasticsearch didn't work
     return EXIT_FAILURE;
   }
@@ -173,7 +172,7 @@ int main() {
   }
 
   deallocate_message_bus(main_message_bus);
-  elastic_search_disconnect(elastic_connection);
+  elasticsearch_disconnect(elastic_connection);
 
   curl_global_cleanup();
 
@@ -246,7 +245,7 @@ void log_irc_server_privmsg(struct message_envelope *envelope)
   if (!irc_command_name_is(msg->command, "PRIVMSG"))
     return;
 
-  elastic_search_insert(elastic_connection, msg);
+  elasticsearch_insert(elastic_connection, msg);
 }
 
 void pong_irc_server(struct message_envelope *envelope)
