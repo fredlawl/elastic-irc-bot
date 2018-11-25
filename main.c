@@ -18,6 +18,7 @@
 #include "irc_message.h"
 #include "message_bus.h"
 #include "elasticsearch.h"
+#include "irc_logger.h"
 
 #include "settings.h"
 
@@ -94,7 +95,7 @@ int main() {
   queue = StsQueue.create();
   lexer = allocate_irc_lexer(queue);
   if (!lexer) {
-    fprintf(stderr, "Unable to create Lexer.\n");
+    log_error("Unable to create Lexer.\n");
     return EXIT_FAILURE;
   }
 
@@ -105,32 +106,32 @@ int main() {
   socket_descriptor = socket(PF_INET, SOCK_STREAM, 0);
 
   if (socket_descriptor == -1) {
-    fprintf(stderr, "Socket could not be created.\n");
+    log_error("Socket could not be created.\n");
     return EXIT_FAILURE;
   }
 
   if (inet_pton(AF_INET, IRC_SERVER_IP, &socket_address.sin_addr) <= 0) {
-    fprintf(stderr, "%s Is an invalid IP address.\n", IRC_SERVER_IP);
+    log_error("%s Is an invalid IP address.\n", IRC_SERVER_IP);
     return EXIT_FAILURE;
   }
 
   if (connect(socket_descriptor, (const struct sockaddr *) &socket_address, sizeof(socket_address)) == -1) {
-    fprintf(stderr, "Socket could not connect.\n");
+    log_error("Socket could not connect.\n");
     return EXIT_FAILURE;
   }
 
   thread_args.queue = queue;
 
   if (pthread_create(&pthread_irc_read_buffer, NULL, &irc_read_buffer_thread, &thread_args)) {
-    fprintf(stderr, "Could not create thread.\n");
+    log_error("Could not create thread.\n");
     return EXIT_FAILURE;
   }
 
   cmds_array_len = sizeof(cmds) / sizeof(char *);
 
   for (size_t i = 0; i < cmds_array_len; i++) {
-    printf("Sending: %s", cmds[i]);
     send(socket_descriptor, cmds[i], strlen(cmds[i]) * sizeof(char), 0);
+    log_info("Sent: %s", cmds[i]);
   }
 
   parser = allocate_irc_message_parser(lexer);
@@ -167,7 +168,7 @@ int main() {
   send(socket_descriptor, "QUIT\r\n", 6 * sizeof(char), 0);
 
   if (pthread_join(pthread_irc_read_buffer, NULL)) {
-    fprintf(stderr, "Error joining thread\n");
+    log_error("Error joining thread\n");
     return EXIT_FAILURE;
   }
 
@@ -228,8 +229,8 @@ void *irc_read_buffer_thread(void *thread_args) {
 }
 
 void signal_termination_handler(int signal_num) {
-  printf("Sending: QUIT\n");
   send(socket_descriptor, "QUIT\r\n", 6 * sizeof(char), 0);
+  log_info("Sent: QUIT\n");
   shutdown(socket_descriptor, SHUT_RDWR);
 }
 
@@ -261,8 +262,8 @@ void pong_irc_server(struct message_envelope *envelope)
   if (!irc_command_name_is(msg->command, "PING"))
     return;
 
-  printf("Sending: PONG\n");
   send(socket_descriptor, cmd, strlen(cmd) * sizeof(char), 0);
+  log_info("Sent: PONG\n");
 }
 
 void log_irc_server_errors(struct message_envelope *envelope)

@@ -5,6 +5,7 @@
 #include "elasticsearch.h"
 #include "irc_message.h"
 #include "str_helpers.h"
+#include "irc_logger.h"
 
 #define MAX_URL_BUFF 250
 
@@ -158,7 +159,7 @@ bool elasticsearch_insert(struct elasticsearch_connection *connection, struct ir
 
   if (curl_easy_perform(connection->curl) != CURLE_OK) {
 #ifdef DEBUG
-    fprintf(stderr, "Error with curl\n%s\n", connection->curl_error_buffer);
+    log_error("Elasticsearch: Error with curl\n%s\n", connection->curl_error_buffer);
 #endif
   }
 

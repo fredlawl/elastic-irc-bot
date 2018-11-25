@@ -7,6 +7,7 @@
 #include "irc_message_parser.h"
 #include "irc_spec.h"
 #include "irc_message.h"
+#include "irc_logger.h"
 
 enum irc_parser_state {
   IRC_PARSER_STATE_PREFIX = 0,
@@ -170,7 +171,7 @@ static void __handle_prefix(struct irc_message_parser *parser, struct irc_messag
 
   prefix = (struct irc_prefix *) malloc(sizeof(struct irc_prefix));
   if (prefix == NULL) {
-    fprintf(stderr, "Unable to allocate prefix.\n");
+    log_error("Parser: Unable to allocate prefix.\n");
     exit(EXIT_FAILURE);
   }
 
@@ -198,7 +199,7 @@ static void __handle_command(struct irc_message_parser *parser, struct irc_messa
   struct irc_command *command;
 
   if ((command = (struct irc_command *) malloc(sizeof(struct irc_command))) == NULL) {
-    fprintf(stderr, "Unable to allocate irc command.\n");
+    log_error("Parser: Unable to allocate irc command.\n");
     exit(EXIT_FAILURE);
   }
 
@@ -243,7 +244,7 @@ static void __handle_command(struct irc_message_parser *parser, struct irc_messa
 
   if (cmd_parser_substate == IRC_PARSER_SUBSTATE_CODE) {
     if (cmd_length != 3) {
-      fprintf(stderr, "Command must be 3 digits.\n");
+      log_error("Parser: Command must be 3 digits.\n");
       exit(EXIT_FAILURE);
     }
   }
@@ -287,7 +288,7 @@ static void __handle_parameter(struct irc_message_parser *parser, struct irc_mes
     }
 
     if (message->command->parameter_count > IRC_SPEC_MAX_COMMAND_PARAMETER_COUNT) {
-      fprintf(stderr, "[FATAL PARSE ERROR] Parameter count exceeded.\n");
+      log_error("Parser: Parameter count exceeded.\n");
       exit(EXIT_FAILURE);
       break;
     }
@@ -351,8 +352,8 @@ void __expecting_error(struct irc_message_parser *parser,
   line[irc_lexer_get_current_line_length(lex) - 2] = '\0';
   line[irc_lexer_get_current_line_length(lex) - 1] = '\0';
 
-  fprintf(stderr, "[FATAL PARSE ERROR] There was an error parsing input. ");
-  fprintf(stderr, "Expecting token %i but got %i instead in the line ", expected, got);
-  fprintf(stderr, "\"%s\"\n", line);
+  log_error("Parse: There was an error parsing input. Expecting token %i but got %i instead in the line \"%s\"\n",
+            expected, got, line);
 
+  free(line);
 }

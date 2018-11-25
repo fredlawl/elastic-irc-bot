@@ -36,6 +36,6 @@ struct irc_message {
 
 bool irc_command_name_is(struct irc_command *cmd, char *name);
 
-void irc_message_pretty_print(struct irc_message *msg, FILE *descriptor);
+void irc_message_pretty_print(struct irc_message *msg, FILE* descriptor);
 
 #endif

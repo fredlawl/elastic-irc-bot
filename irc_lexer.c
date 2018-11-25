@@ -2,12 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <assert.h>
+#include <stdio.h>
 
 #include "irc_lexer.h"
 #include "irc_token.h"
-
-#include <assert.h>
-#include <stdio.h>
+#include "irc_logger.h"
 
 struct irc_lexer {
   StsHeader *line_buffer;
@@ -113,7 +113,7 @@ struct irc_token *irc_lexer_get_next_token(struct irc_lexer *lexer) {
       tok_value.character = '\0';
       return allocate_irc_token(IRC_TOKEN_EOL, tok_value);
     } else {
-      fprintf(stderr, "[FATAL PARSE ERROR] Expecting EOL\n");
+      log_error("Lexer: Expecting EOL\n");
     }
   }
 
