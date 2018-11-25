@@ -57,9 +57,10 @@ add_library(libelasticirc STATIC
 		message_bus.c
 		elasticsearch.c
 		irc_message.c
-		str_helpers.c)
+		str_helpers.c irc_logger.h irc_logger.c)
 
 add_executable(${BINARY_NAME} main.c)
+add_custom_command(TARGET ${BINARY_NAME} POST_BUILD COMMAND cscope -b -q -U -R)
 target_link_libraries(elastic_irc_bot ${LIBRARIES} libelasticirc)
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
