@@ -198,7 +198,8 @@ static char * __append_index_document(struct elasticsearch_connection *connectio
 }
 
 static size_t __curl_write(char *buffer, size_t size, size_t nmemb, void *userdata) {
-  // do nothing
-  printf("%s\n", buffer);
+#ifdef DEBUG
+  log_info("Elasticsearch: %s\n", buffer);
+#endif
   return size * nmemb;
 }
